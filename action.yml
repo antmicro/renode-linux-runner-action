@@ -1,0 +1,14 @@
+name: Renode linux tester
+inputs:
+  shared-dir:
+    description: Path to shared directory
+    required: true
+  renode-run:
+    description: Command or a list of commands to run in Renode
+    required: true
+runs:
+  using: docker
+  image: docker://ghcr.io/antmicro/renode-gha-linux-playground/renode-linux-tester
+  args:
+    - ${{ inputs.shared-dir }}
+    - ${{ inputs.renode-run }}

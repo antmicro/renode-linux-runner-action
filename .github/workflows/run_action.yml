@@ -1,0 +1,19 @@
+name: Run action
+on: [push, pull_request]
+
+jobs:
+  renode-linux-runner-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
+
+      - name: Run in Renode
+        uses: ./
+        with:
+          shared-dir: ./tests
+          renode-run: |
+            python test.py
+            pip install ./pyrav4l2
+            python controls-enumeration.py
