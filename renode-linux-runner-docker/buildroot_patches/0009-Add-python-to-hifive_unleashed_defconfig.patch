@@ -1,0 +1,26 @@
+From 24fc327ac5b9a1d44106a576693829656d7efd3d Mon Sep 17 00:00:00 2001
+From: Andrzej Rafalski <arafalski@internships.antmicro.com>
+Date: Tue, 15 Nov 2022 12:37:54 +0100
+Subject: [PATCH 9/9] Add python to hifive_unleashed_defconfig
+
+---
+ configs/hifive_unleashed_defconfig | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/configs/hifive_unleashed_defconfig b/configs/hifive_unleashed_defconfig
+index cd89e92575..2392087f6a 100644
+--- a/configs/hifive_unleashed_defconfig
++++ b/configs/hifive_unleashed_defconfig
+@@ -54,6 +54,9 @@ BR2_TOOLCHAIN_BUILDROOT_CXX=y
+ # Packages
+ BR2_PACKAGE_LIBV4L=y
+ BR2_PACKAGE_LIBV4L_UTILS=y
++BR2_TOOLCHAIN_BUILDROOT_WCHAR=y
++BR2_PACKAGE_PYTHON3=y
++BR2_PACKAGE_PYTHON_PIP=y
+ 
+ 
+ # Host tools
+-- 
+2.38.1
+
