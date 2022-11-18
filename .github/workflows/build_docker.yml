@@ -1,0 +1,22 @@
+name: Build docker container
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt update
+      - run: sudo apt install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+      - run: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+      - run: sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+      - run: sudo apt update
+      - run: sudo apt install -y docker-ce docker-ce-cli containerd.io
+      - run: docker build -t ghcr.io/antmicro/renode-gha-linux-playground/renode-linux-tester renode-tester-docker
+      - name: Login to ghcr.io
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: antmicro
+          password: ${{ github.token }}
+      - run: docker push ghcr.io/antmicro/renode-gha-linux-playground/renode-linux-tester

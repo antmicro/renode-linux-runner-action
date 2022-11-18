@@ -1,0 +1,42 @@
+#!/usr/bin/expect
+
+set timeout 10
+log_user 0
+spawn telnet 127.0.0.1 1234
+
+proc run_cmd {output_to_expect cmd_to_run} {
+    expect {
+        $output_to_expect {
+            send "$cmd_to_run\n"
+        } timeout {
+            send_user "Timeout!"
+            exit 1
+        }
+    }
+}
+
+log_user 1
+run_cmd "(monitor)" "include @/hifive.resc"
+run_cmd "(hifive-unleashed)" "machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'"
+run_cmd "(hifive-unleashed)" "virtio LoadImage @drive.img"
+run_cmd "(hifive-unleashed)" "start"
+run_cmd "(hifive-unleashed)" "uart_connect sysbus.uart0"
+
+set timeout 120
+run_cmd "buildroot login:" "root"
+set timeout 10
+
+run_cmd "#" "dmesg -n 1"
+run_cmd "#" "modprobe vivid"
+run_cmd "#" "mkdir /mnt/drive"
+run_cmd "#" "mount /dev/vda /mnt/drive"
+run_cmd "#" "cd /mnt/drive"
+
+expect {
+    "#" {
+        exit 0
+    } timeout {
+        send_user "Timeout!"
+        exit 1
+    }
+}
