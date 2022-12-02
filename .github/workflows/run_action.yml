@@ -6,20 +6,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Login to ghcr.io
-      uses: docker/login-action@v2
-      with:
-        registry: ghcr.io
-        username: antmicro
-        password: ${{ github.token }}
-    - name: Pull docker image
-      run: docker pull ghcr.io/antmicro/renode-gha-linux-playground/renode-linux-tester
     - run: git clone https://github.com/antmicro/pyrav4l2.git
       working-directory: tests
-    - name: Setup renode-linux-tester action
+    - name: Run in Renode
       uses: ./
       with:
         shared-dir: ./tests
-    - run: renode-caller "python test.py"
-    - run: renode-caller "pip install ./pyrav4l2"
-    - run: renode-caller "python controls-enumeration.py"
+        renode-run: |
+          python test.py
+          pip install ./pyrav4l2
+          python controls-enumeration.py

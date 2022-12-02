@@ -3,12 +3,11 @@ inputs:
   shared-dir:
     description: 'Shared directory'
     required: true
+  renode-run:
+    required: true
 runs:
-  using: composite
-  steps:
-    - run: docker run -td --name renode-tester --mount type=bind,source=$GITHUB_WORKSPACE,target=/github/workspace ghcr.io/antmicro/renode-gha-linux-playground/renode-linux-tester
-      shell: bash
-    - run: docker exec renode-tester /renode-setup.sh ${{ inputs.shared-dir }}
-      shell: bash
-    - run: echo $GITHUB_ACTION_PATH >> $GITHUB_PATH
-      shell: bash
+  using: docker
+  image: docker://ghcr.io/antmicro/renode-gha-linux-playground/renode-linux-tester
+  args:
+    - ${{ inputs.shared-dir }}
+    - ${{ inputs.renode-run }}

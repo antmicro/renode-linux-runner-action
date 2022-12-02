@@ -1,3 +1,0 @@
-#!/bin/bash
-
-docker exec renode-tester /renode-caller.expect "$1"

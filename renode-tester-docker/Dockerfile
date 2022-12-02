@@ -17,7 +17,7 @@ COPY --from=builder /buildroot/output/images/fw_payload.elf /images
 COPY --from=builder /buildroot/output/images/Image /images
 COPY --from=builder /buildroot/output/images/rootfs.cpio /images
 
-RUN apt-get update && apt-get -y install wget python3-dev git expect telnet
+RUN apt-get update && apt-get -y install wget python3 python3-dev git expect telnet
 
 ARG RENODE_VERSION=1.13.0
 RUN wget https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb && \
@@ -25,9 +25,10 @@ RUN wget https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/r
     rm ./renode_${RENODE_VERSION}_amd64.deb && \
     rm -rf /var/lib/apt/lists/*
 RUN pip3 install -r /opt/renode/tests/requirements.txt --no-cache-dir
+RUN pip3 install pexpect --no-cache-dir
 
-COPY renode-setup.sh /
-COPY *.expect /
+COPY entrypoint.sh /
 COPY hifive.resc /
+COPY run-in-renode.py /
 
-WORKDIR /github/workspace
+ENTRYPOINT [ "/entrypoint.sh" ]
