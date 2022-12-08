@@ -27,29 +27,45 @@ def setup_renode():
         child.expect_exact("'^]'.")
         child.logfile_read = sys_stdout
 
-        run_cmd(child, "(monitor)", "include @/hifive.resc")
-        run_cmd(
-            child, "(hifive-unleashed)",
-            "machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'"
-        )
-        run_cmd(child, "(hifive-unleashed)", "virtio LoadImage @drive.img")
-        run_cmd(child, "(hifive-unleashed)", "start")
-        run_cmd(child, "(hifive-unleashed)", "uart_connect sysbus.uart0")
+        run_cmd(child, """\
+(monitor)
+(hifive-unleashed)
+(hifive-unleashed)
+(hifive-unleashed)
+(hifive-unleashed)
+""", """\
+include @/hifive.resc
+machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'
+virtio LoadImage @drive.img
+start
+uart_connect sysbus.uart0
+""")
 
-        index = child.expect_exact(["buildroot login:", "Kernel panic"],
-                                   timeout=120)
+        index = child.expect_exact(
+            ["buildroot login:", "Kernel panic"],
+            timeout=120
+        )
         if index == 0:
             child.sendline("root")
         elif index == 1:
             sys_exit(1)
 
-        run_cmd(child, "#", "dmesg -n 1")
-        run_cmd(child, "#", "modprobe vivid")
-        run_cmd(child, "#", "mkdir /mnt/drive")
-        run_cmd(child, "#", "mount /dev/vda /mnt/drive")
-        run_cmd(child, "#", "cd /mnt/drive")
+        run_cmd(child, """\
+#
+#
+#
+#
+#
+""", """\
+dmesg -n 1
+modprobe vivid
+mkdir /mnt/drive
+mount /dev/vda /mnt/drive
+cd /mnt/drive
+""")
 
         child.expect_exact("#")
+
     except px_TIMEOUT:
         print("Timeout!")
         sys_exit(1)
