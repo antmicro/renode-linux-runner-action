@@ -1,21 +1,31 @@
-import sys
-import pexpect
-import time
+# !!! Copyright is missing here
+
+from sys import stdout as sys_stdout, exit as sys_exit, argv as sys_argv
+from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
+from time import sleep
 
 
 def run_cmd(child_process, output_to_expect, cmd_to_run, timeout=-1):
+    """
+    !!! Missing docstring
+    """
     child_process.expect_exact(output_to_expect, timeout=timeout)
     child_process.sendline(cmd_to_run)
 
 
 def setup_renode():
-    child = pexpect.spawn("telnet 127.0.0.1 1234",
-                          encoding="utf-8",
-                          timeout=10)
+    """
+    !!! Missing docstring
+    """
+    child = px_spawn(
+        "telnet 127.0.0.1 1234",
+        encoding="utf-8",
+        timeout=10
+    )
 
     try:
         child.expect_exact("'^]'.")
-        child.logfile_read = sys.stdout
+        child.logfile_read = sys_stdout
 
         run_cmd(child, "(monitor)", "include @/hifive.resc")
         run_cmd(
@@ -31,7 +41,7 @@ def setup_renode():
         if index == 0:
             child.sendline("root")
         elif index == 1:
-            sys.exit(1)
+            sys_exit(1)
 
         run_cmd(child, "#", "dmesg -n 1")
         run_cmd(child, "#", "modprobe vivid")
@@ -40,23 +50,26 @@ def setup_renode():
         run_cmd(child, "#", "cd /mnt/drive")
 
         child.expect_exact("#")
-    except pexpect.TIMEOUT:
+    except px_TIMEOUT:
         print("Timeout!")
-        sys.exit(1)
+        sys_exit(1)
 
 
 def run_cmds_in_renode(commands_to_run):
+    """
+    !!! Missing docstring
+    """
     for cmd in commands_to_run.splitlines():
         print()
         print(f"Run in Renode: {cmd}")
 
         try:
-            child = pexpect.spawn("telnet 127.0.0.1 1234", encoding="utf-8")
+            child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8")
 
             child.expect_exact("'^]'.", timeout=60)
 
-            child.logfile_read = sys.stdout
-            time.sleep(5)
+            child.logfile_read = sys_stdout
+            sleep(5)
             child.sendline(cmd)
             child.expect_exact("#", timeout=None)
 
@@ -66,17 +79,17 @@ def run_cmds_in_renode(commands_to_run):
             exit_code = int(child.match.group(0))
 
             if exit_code != 0:
-                sys.exit(exit_code)
+                sys_exit(exit_code)
 
-        except pexpect.TIMEOUT:
+        except px_TIMEOUT:
             print("Timeout!")
-            sys.exit(1)
+            sys_exit(1)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) <= 1:
+    if len(sys_argv) <= 1:
         print("Not enough input arguments")
-        sys.exit(1)
+        sys_exit(1)
 
     setup_renode()
-    run_cmds_in_renode(sys.argv[1])
+    run_cmds_in_renode(sys_argv[1])
