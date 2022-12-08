@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # !!! Copyright is missing here
 
 from sys import stdout as sys_stdout, exit as sys_exit, argv as sys_argv
