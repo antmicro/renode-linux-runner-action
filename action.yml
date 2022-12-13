@@ -8,7 +8,7 @@ inputs:
     required: true
 runs:
   using: docker
-  image: docker://ghcr.io/antmicro/renode-gha-linux-playground/renode-linux-tester
+  image: docker://ghcr.io/antmicro/renode-linux-runner-docker
   args:
     - ${{ inputs.shared-dir }}
     - ${{ inputs.renode-run }}
