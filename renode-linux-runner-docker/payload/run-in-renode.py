@@ -14,11 +14,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os import chdir
 from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
 from subprocess import run, DEVNULL, CalledProcessError
 from sys import stdout as sys_stdout, exit as sys_exit, argv as sys_argv
 from time import sleep
+from re import sub as re_sub, compile as re_compile
+
+CR = r'\r'
+
+
+class FilteredStdout(object):
+    """
+    Stdout wrapper which replaces found pattern with 'replace' string.
+    """
+    def __init__(self, stream, pattern: str, replace: str):
+        """
+        Parameters
+        ----------
+        stream : stdout
+        pattern : regex pattern to match and replace with 'replace'
+        replace : string to replace found patterns
+        """
+        self.stream = stream
+        self.pattern = re_compile(pattern)
+        self.replace = replace
+
+    def _write(self, string):
+        self.stream.write(re_sub(self.pattern, self.replace, string))
+
+    def __getattr__(self, attr):
+        if attr == 'write':
+            return self._write
+        return getattr(self.stream, attr)
 
 
 def create_shared_directory_image(shared_directory: str):
@@ -93,7 +120,10 @@ def setup_renode():
 
     try:
         child.expect_exact("'^]'.")
-        child.logfile_read = sys_stdout
+
+        # FilteredStdout is used to remove \r characters from telnet output.
+        # GitHub workflow log GUI interprets this sequence as newline.
+        child.logfile_read = FilteredStdout(sys_stdout, CR, "")
 
         run_cmd(child, "(monitor)", "include @/hifive.resc")
         run_cmd(
@@ -145,7 +175,10 @@ def run_cmds_in_renode(commands_to_run: str):
 
             child.expect_exact("'^]'.", timeout=60)
 
-            child.logfile_read = sys_stdout
+            # FilteredStdout is used to remove \r characters from telnet output.
+            # GitHub workflow log GUI interprets this sequence as newline.
+            child.logfile_read = FilteredStdout(sys_stdout, CR, "")
+
             sleep(5)
             child.sendline(cmd)
             child.expect_exact("#", timeout=None)
@@ -168,7 +201,6 @@ if __name__ == "__main__":
         print("Not enough input arguments")
         sys_exit(1)
 
-    chdir("/github/workspace")
     create_shared_directory_image(sys_argv[1])
     run_renode_in_background()
     setup_renode()

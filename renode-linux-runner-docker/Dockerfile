@@ -74,4 +74,6 @@ RUN apt-get update -qq && \
     pip3 install -r /opt/renode/tests/requirements.txt --no-cache-dir && \
     pip3 install pexpect --no-cache-dir
 
+WORKDIR /github/workspace
+
 ENTRYPOINT [ "/run-in-renode.py" ]

@@ -3,7 +3,7 @@ name: Build docker container
 on:
   push:
     paths:
-      - 'renode-tester-docker/**'
+      - 'renode-linux-runner-docker/**'
   workflow_dispatch:
   repository_dispatch:
 
@@ -13,11 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Build
-        run: docker build -t ghcr.io/antmicro/renode-linux-runner-docker renode-linux-runner-docker
+        run: docker build -t ghcr.io/${{ github.repository }} renode-linux-runner-docker
       - name: Login to ghcr.io and release
         uses: pyTooling/Actions/with-post-step@r0
         with:
           main: |
             echo '${{ github.token }}' | docker login ghcr.io -u gha --password-stdin
-            docker push ghcr.io/antmicro/renode-linux-runner-docker
+            docker push ghcr.io/${{ github.repository }}
           post: docker logout ghcr.io
