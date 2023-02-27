@@ -6,9 +6,14 @@ inputs:
   renode-run:
     description: Command or a list of commands to run in Renode
     required: true
+  devices:
+    description: Devices to set up
+    required: false
+    default: ""
 runs:
   using: docker
   image: docker://ghcr.io/antmicro/renode-linux-runner-action
   args:
     - ${{ inputs.shared-dir }}
     - ${{ inputs.renode-run }}
+    - ${{ inputs.devices}}

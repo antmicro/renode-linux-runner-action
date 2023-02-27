@@ -1,0 +1,16 @@
+name: Run action - pull request
+on: [pull_request]
+
+# It is not possible to test a pull request using run_action.yml 
+# because of the action uses the deployed docker image from GHCR.
+
+jobs:
+  test-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: pip install PyYAML
+
+      - name: Bash script
+        run: bash ./run-locally.sh
