@@ -1,5 +1,5 @@
 name: Run action
-on: [push, pull_request]
+on: [push]
 
 jobs:
   renode-linux-runner-test:
