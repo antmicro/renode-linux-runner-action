@@ -5,37 +5,16 @@ renode-linux-runner-action is a GitHub Action that can run scripts on Linux insi
 
 ## Emulated system
 The emulated system is based on the [Buildroot 2022.08.1](https://github.com/buildroot/buildroot/tree/2022.08.1) and it runs on the RISC-V/HiFive Unleashed platform in [Renode 1.13](https://github.com/renode/renode).
-It contains the Linux kernel configured with some emulated devices enabled and it has the following packages installed:
+It contains the Linux kernel configured with the [`vivid` module](https://www.kernel.org/doc/html/latest/admin-guide/media/vivid.html) enabled and it has the following packages installed:
 - Python 3.10.7
 - pip 21.2.4
 - v4l2-utils 1.22.1
-- libgpiod tools 1.6.3
 
 ## Parameters
 - `shared-dir` - Path to the shared directory. Contents of this directory will be mounted in Renode. This is also the default path in which specified commands are run
 - `renode-run` - A command or a list of commands to run in Renode
-- `devices` - List of devices that should be added to the workflow
-
-### Devices syntax
-
-```yaml
-- uses: antmicro/renode-linux-runner-action@main
-  with:
-    devices: |
-      device1 param1 param2 param3 ...
-      device2 param1 param2 param3 ...
-      ...
-```
-
-### Available devices
-
-- [`vivid`](https://www.kernel.org/doc/html/latest/admin-guide/media/vivid.html) - virtual device emulating a Video4Linux device
-- [`gpio`](https://docs.kernel.org/admin-guide/gpio/gpio-mockup.html) - virtual device emulating GPIO lines. Optional parameters:
-  - left bound: GPIO line numbers will start from this number
-  - right bound: GPIO line numbers will end 1 before this number (for example, `gpio 0 64` will add 64 lines from 0 to 63)
 
 ## Usage
-
 Running a single command using the `renode-run` parameter:
 
 ```yaml
@@ -43,7 +22,6 @@ Running a single command using the `renode-run` parameter:
   with:
     shared-dir: ./shared-dir
     renode-run: command_to_run
-    devices: vivid
 ```
 
 Running multiple commands works the same way as the standard `run` command:
@@ -55,11 +33,6 @@ Running multiple commands works the same way as the standard `run` command:
     renode-run: |
       command_to_run_1
       command_to_run_2
-    renode-run: |
-      vivid
-      gpio
 ```
-
-Multiple devices can also be specified this way.
 
 The [renode-linux-runner-test](.github/workflows/run_action.yml) workflow contains an example usage of this action.

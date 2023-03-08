@@ -19,8 +19,6 @@ from subprocess import run, DEVNULL, CalledProcessError
 from sys import stdout as sys_stdout, exit as sys_exit, argv as sys_argv
 from time import sleep
 from re import sub as re_sub, compile as re_compile
-from dataclasses import dataclass
-from typing import Any, Protocol
 
 CR = r'\r'
 
@@ -48,164 +46,6 @@ class FilteredStdout(object):
         if attr == 'write':
             return self._write
         return getattr(self.stream, attr)
-
-
-class Action(Protocol):
-    """
-    Called by the add_devices function. Used for some
-    command when additional action is required.
-    """
-
-    """
-    If Action requirements are not satisfied this error will be printed
-    """
-    error: str
-
-    def __call__(self, *args: Any) -> str:
-        raise NotImplementedError
-
-    def check_args(self, *args: Any) -> bool:
-        """
-        Checks if the passed parameters are correct
-        """
-        raise NotImplementedError
-
-
-class GPIO_SplitDevice:
-    """
-    Replaces the number of GPIO lines with multiple
-    devices with a maximum of 32 lines each.
-    """
-    def __init__(self) -> None:
-        self.error = "the first parameter must be lower than the second"
-
-    def __call__(self, *args: str) -> str:
-
-        assert len(args) >= 3, "not enough parameters passed"
-        assert args[1].isdecimal() and args[2].isdecimal()
-
-        command: str = args[0]
-        l, r = int(args[1]), int(args[2])
-        gpio_ranges_params = []
-
-        while r - l > 32:
-            gpio_ranges_params += [l, l + 32]
-            l += 32
-
-        if l != r:
-            gpio_ranges_params += [l, r]
-
-        return [command.split("=")[0] + '=' +
-                ','.join([str(i) for i in gpio_ranges_params])]
-
-    def check_args(self, args: list[str]) -> bool:
-        return len(args) >= 2 and \
-               args[0].isdecimal() and \
-               args[1].isdecimal() and \
-               int(args[0]) < int(args[1])
-
-
-@dataclass
-class Device_Prototype:
-    """
-    Device Prototype: it stores available devices that can be added.
-    Fields:
-    ----------
-    add_commands: list[str]
-        commands that is needed to add device
-    params: list[str]
-        default parameters
-    command_action: list[tuple[str, int]]
-        defines number of parameters needed and the
-        Action itself
-    """
-    add_commands: list[str]
-    params: list[str]
-    command_action: list[tuple[Action, int]]
-
-
-@dataclass
-class Device:
-    """
-    Device Prototype: stores already added devices
-    Fields:
-    ----------
-    add_commands: list[str]
-        parsed commands to add the device
-    """
-    add_commands: list[str]
-
-
-available_devices = {
-    "vivid": Device_Prototype(
-                ["modprobe vivid"],
-                [],
-                [(None, 0)],
-            ),
-    "gpio": Device_Prototype(
-                ["modprobe gpio-mockup gpio_mockup_ranges={0},{1}"],
-                ['0', '32'],
-                [(GPIO_SplitDevice, 2)],
-            ),
-}
-
-
-added_devices: list[Device] = []
-
-
-def add_devices(devices: str):
-    """
-    Parses arguments and commands, and adds devices to the
-    `available devices` list
-    Parameters
-    ----------
-    devices: str
-        raw string from github action, syntax defined in README.md
-    """
-
-    for device in devices.splitlines():
-        device = device.split()
-        device_name = device[0]
-
-        errors_occured = False
-
-        if device_name in available_devices:
-            device_proto = available_devices[device_name]
-
-            new_device = Device([])
-
-            args = device[1:]
-            args_pointer = 0
-
-            if len(device[1:]) != len(device_proto.params):
-                print(f"WARNING: for device {device_name}, wrong number "
-                      "of parameters, replaced with the default ones.")
-                args = device_proto.params
-
-            for it, command in enumerate(device_proto.add_commands):
-
-                params_action: Action = device_proto.command_action[it][0]
-                params_list_len: int = device_proto.command_action[it][1]
-
-                if params_list_len == 0 or not params_action:
-                    new_device.add_commands.append(command)
-                    continue
-
-                params_action = params_action()
-                params = args[args_pointer:args_pointer + params_list_len]
-
-                if params_action.check_args(params):
-                    new_device.add_commands += params_action(command, *params)
-                else:
-                    print(f"ERROR: for device {device_name} {params_action.error}.")
-                    errors_occured = True
-
-                args_pointer += params_list_len
-
-            if not errors_occured:
-                added_devices.append(new_device)
-        else:
-            print(f"WARNING: Device {device_name} not found")
 
 
 def create_shared_directory_image(shared_directory: str):
@@ -286,7 +126,6 @@ def setup_renode():
         child.logfile_read = FilteredStdout(sys_stdout, CR, "")
 
         run_cmd(child, "(monitor)", "include @/hifive.resc")
-        run_cmd(child, "(hifive-unleashed)", "machine UnregisterFromParent gpio")
         run_cmd(
             child, "(hifive-unleashed)",
             "machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'"
@@ -303,14 +142,10 @@ def setup_renode():
             sys_exit(1)
 
         run_cmd(child, "#", "dmesg -n 1")
-        for device in added_devices:
-            for command in device.add_commands:
-                run_cmd(child, "#", command)
+        run_cmd(child, "#", "modprobe vivid")
         run_cmd(child, "#", "mkdir /mnt/drive")
         run_cmd(child, "#", "mount /dev/vda /mnt/drive")
         run_cmd(child, "#", "cd /mnt/drive")
-        run_cmd(child, "#", "mkdir -p /sys/kernel/debug")
-        run_cmd(child, "#", "mount -t debugfs nodev /sys/kernel/debug")
 
         child.expect_exact("#")
     except px_TIMEOUT:
@@ -365,9 +200,6 @@ if __name__ == "__main__":
     if len(sys_argv) <= 2:
         print("Not enough input arguments")
         sys_exit(1)
-
-    if len(sys_argv) == 4 and sys_argv[3] != "":
-        add_devices(sys_argv[3])
 
     create_shared_directory_image(sys_argv[1])
     run_renode_in_background()
