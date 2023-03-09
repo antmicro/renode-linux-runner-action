@@ -5,7 +5,7 @@ on: [pull_request]
 # because of the action uses the deployed docker image from GHCR.
 
 jobs:
-  test-pull-request:
+  default-configuration-test-on-pull-request:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
