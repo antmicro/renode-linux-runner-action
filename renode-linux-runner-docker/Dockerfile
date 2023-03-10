@@ -42,18 +42,17 @@ RUN apt-get update -qq && \
     apt-get autoclean && apt-get clean && apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
-RUN git clone --branch 2022.08.1 https://github.com/buildroot/buildroot /buildroot
+RUN git clone --branch 2022.11.2 https://github.com/buildroot/buildroot /buildroot
 
-COPY buildroot_patches/*.patch /buildroot/
+RUN mkdir -p /br2_external /buildroot-ccache
+COPY br2_external/ /br2_external
 
 RUN cd /buildroot && \
-    git apply *.patch && \
-    make hifive_unleashed_defconfig && \
+    make BR2_EXTERNAL=/br2_external hifive_unleashed_defconfig && \
     make && \
     mkdir /tmp/images && \
     cd output/images && \
     cp hifive-unleashed-a00.dtb fw_payload.elf Image rootfs.cpio /tmp/images
-
 
 FROM base
 
