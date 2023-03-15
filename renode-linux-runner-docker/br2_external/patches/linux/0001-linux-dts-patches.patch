@@ -1,0 +1,65 @@
+From 9c82654effe0c1d5a8b973e479b96b0c85c57a24 Mon Sep 17 00:00:00 2001
+From: Wiktor Ogrodnik <wogrodnik@internships.antmicro.com>
+Date: Fri, 10 Mar 2023 10:25:27 +0100
+Subject: [PATCH] linux dts patches
+
+Remove MMC from DTS
+Expand device tree
+Add virtio to device tree
+Remove default GPIO devices
+---
+ .../boot/dts/sifive/hifive-unleashed-a00.dts  | 20 ++++++-------------
+ 1 file changed, 6 insertions(+), 14 deletions(-)
+
+diff --git a/arch/riscv/boot/dts/sifive/hifive-unleashed-a00.dts b/arch/riscv/boot/dts/sifive/hifive-unleashed-a00.dts
+index dddabfbbc7a9..15e528335102 100644
+--- a/arch/riscv/boot/dts/sifive/hifive-unleashed-a00.dts
++++ b/arch/riscv/boot/dts/sifive/hifive-unleashed-a00.dts
+@@ -29,6 +29,12 @@ memory@80000000 {
+ 	};
+ 
+ 	soc {
++		virtio@100d0000 {
++        	compatible = "virtio,mmio";
++        	reg = <0x00 0x100d0000 0x00 0x150>;
++        	interrupt-parent = <&plic0>;
++        	interrupts = <50>;
++    	};
+ 	};
+ 
+ 	hfclk: hfclk {
+@@ -44,10 +50,6 @@ rtcclk: rtcclk {
+ 		clock-frequency = <RTCCLK_FREQ>;
+ 		clock-output-names = "rtcclk";
+ 	};
+-	gpio-restart {
+-		compatible = "gpio-restart";
+-		gpios = <&gpio 10 GPIO_ACTIVE_LOW>;
+-	};
+ 
+ 	led-controller {
+ 		compatible = "pwm-leds";
+@@ -112,13 +114,6 @@ flash@0 {
+ 
+ &qspi2 {
+ 	status = "okay";
+-	mmc@0 {
+-		compatible = "mmc-spi-slot";
+-		reg = <0>;
+-		spi-max-frequency = <20000000>;
+-		voltage-ranges = <3300 3300>;
+-		disable-wp;
+-	};
+ };
+ 
+ &eth0 {
+@@ -139,6 +134,3 @@ &pwm1 {
+ 	status = "okay";
+ };
+ 
+-&gpio {
+-	status = "okay";
+-};
+-- 
+2.30.2
+

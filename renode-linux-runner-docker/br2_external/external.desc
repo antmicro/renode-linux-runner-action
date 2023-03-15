@@ -1,0 +1,2 @@
+name: SIFIVE_RENODE_CI
+desc: Linux embedded instance for use in github actions

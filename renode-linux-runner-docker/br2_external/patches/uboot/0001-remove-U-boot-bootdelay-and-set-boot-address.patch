@@ -1,0 +1,23 @@
+From 8fe5ec4cfb53a7f7f1e99472964ad208dc1f09e3 Mon Sep 17 00:00:00 2001
+From: Wiktor Ogrodnik <wogrodnik@internships.antmicro.com>
+Date: Thu, 9 Mar 2023 12:17:19 +0100
+Subject: [PATCH] remove U-boot bootdelay and set boot address
+
+---
+ configs/sifive_fu540_defconfig | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/configs/sifive_fu540_defconfig b/configs/sifive_fu540_defconfig
+index cabd3b1..40e23e8 100644
+--- a/configs/sifive_fu540_defconfig
++++ b/configs/sifive_fu540_defconfig
+@@ -27,3 +27,6 @@ CONFIG_SPL_DM_SEQ_ALIAS=y
+ CONFIG_SPL_CLK=y
+ CONFIG_DM_MTD=y
+ CONFIG_DM_RESET=y
++CONFIG_BOOTDELAY=-2
++CONFIG_USE_BOOTCOMMAND=y
++CONFIG_BOOTCOMMAND="booti 0x8b000000 - 0x88000000"
+-- 
+2.30.2
+

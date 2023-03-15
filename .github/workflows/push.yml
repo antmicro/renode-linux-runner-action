@@ -28,6 +28,7 @@ jobs:
         with:
           shared-dir: ./tests
           renode-run: |
+            gpiodetect
             sh gpio.sh
             python test.py
             pip install ./pyrav4l2
