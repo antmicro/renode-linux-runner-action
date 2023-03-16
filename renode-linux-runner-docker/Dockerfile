@@ -25,7 +25,6 @@ RUN apt-get update -qq && \
     update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-
 FROM base as builder
 
 RUN apt-get update -qq && \
@@ -64,6 +63,8 @@ RUN apt-get update -qq && \
     python3 \
     python3-dev \
     telnet \
+    iproute2 \
+    iptables \
     ./renode_${RENODE_VERSION}_amd64.deb && \
     apt-get autoclean && apt-get clean && apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
