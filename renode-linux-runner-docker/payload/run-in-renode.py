@@ -21,6 +21,7 @@ from time import sleep
 from re import sub as re_sub, compile as re_compile
 from dataclasses import dataclass
 from typing import Any, Protocol
+from string import hexdigits
 
 CR = r'\r'
 
@@ -105,6 +106,31 @@ class GPIO_SplitDevice:
                int(args[0]) < int(args[1])
 
 
+class I2C_SetDeviceAddress:
+    """
+    Set the simulated i2c device address that is connected
+    to the i2c bus.
+    """
+    def __init__(self) -> None:
+        self.error = "the address has to be hexadecimal number between 3 and 119"
+
+    def __call__(self, *args: str) -> str:
+
+        assert len(args) >= 2, "not enough parameters passed"
+
+        command: str = args[0]
+        addr = args[1]
+
+        return [command.format(addr)]
+
+    def check_args(self, args: list[str]) -> bool:
+        return len(args) == 1 and \
+               len(args[0]) >= 3 and \
+               args[0][0:2] == '0x' and \
+               all(c in hexdigits for c in args[0][2:]) and \
+               3 <= int(args[0], 16) <= 119
+
+
 @dataclass
 class Device_Prototype:
     """
@@ -147,6 +173,11 @@ available_devices = {
                 ['0', '32'],
                 [(GPIO_SplitDevice, 2)],
             ),
+    "i2c": Device_Prototype(
+                ["modprobe i2c-stub chip_addr={0}"],
+                ["0x1C"],
+                [(I2C_SetDeviceAddress, 1)],
+    )
 }
 
 

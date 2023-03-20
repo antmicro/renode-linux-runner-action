@@ -48,9 +48,11 @@ jobs:
           renode-run: |
             gpiodetect
             sh gpio.sh
+            sh i2c.sh
             python test.py
             pip install ./pyrav4l2
             python controls-enumeration.py
           devices: |
             vivid
             gpio 0 16
+            i2c 0x1C
