@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+# Configure linux environment before running python script
+
+exec /run-in-renode.py "$@"

@@ -4,13 +4,17 @@ using sysbus
 mach create $name
 machine LoadPlatformDescription @platforms/cpus/sifive-fu540.repl
 
+machine UnregisterFromParent gpio
+machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'
+virtio LoadImage @drive.img
+
 showAnalyzer uart0
 e51 LogFunctionNames true
 
-$fdt ?=    @/images/hifive-unleashed-a00.dtb
-$elf ?=    @/images/fw_payload.elf
-$image ?=  @/images/Image
-$rootfs ?= @/images/rootfs.cpio
+$fdt ?=    @/mut_images/hifive-unleashed-a00.dtb
+$elf ?=    @/mut_images/fw_payload.elf
+$image ?=  @/mut_images/Image
+$rootfs ?= @/mut_images/rootfs.cpio
 
 macro reset
 """

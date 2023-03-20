@@ -11,7 +11,7 @@ def ret_arg(arg: str) -> str:
     global path
     path += [arg]
 
-    with open("./.github/workflows/push.yml", "r", encoding="utf-8") as yml:
+    with open("./.github/workflows/build_and_test.yml", "r", encoding="utf-8") as yml:
         obj = yaml.safe_load(yml)
         for p in path:
             obj = obj[p]
