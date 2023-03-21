@@ -50,14 +50,11 @@ COPY br2_external/ /br2_external
 RUN cd /buildroot && \
     make BR2_EXTERNAL=/br2_external hifive_unleashed_defconfig && \
     make && \
-    mkdir /tmp/images && \
+    mkdir /images && \
     cd output/images && \
-    cp hifive-unleashed-a00.dtb fw_payload.elf Image rootfs.cpio /tmp/images
+    cp hifive-unleashed-a00.dtb fw_payload.elf Image rootfs.cpio /images
 
-FROM base
-
-COPY --from=builder /tmp/images /images
-COPY payload/* /
+FROM builder as packages
 
 ARG RENODE_VERSION=1.13.0
 RUN wget https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb
@@ -73,6 +70,13 @@ RUN apt-get update -qq && \
     pip3 install -r /opt/renode/tests/requirements.txt --no-cache-dir && \
     pip3 install pexpect --no-cache-dir
 
+FROM packages as finish
+
+COPY --from=builder /images /mut_images
+COPY payload/* /
+
+RUN mkdir -p /mnt && mkdir -p /mnt/user
+
 WORKDIR /github/workspace
 
-ENTRYPOINT [ "/run-in-renode.py" ]
+ENTRYPOINT [ "/config" ]

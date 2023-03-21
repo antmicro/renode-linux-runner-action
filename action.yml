@@ -11,9 +11,13 @@ inputs:
     required: false
     default: ""
 runs:
-  using: docker
-  image: docker://ghcr.io/antmicro/renode-linux-runner-action
-  args:
-    - ${{ inputs.shared-dir }}
-    - ${{ inputs.renode-run }}
-    - ${{ inputs.devices}}
+  using: composite
+  steps:
+    - id: run
+      run: |
+        docker run
+        -v "$(pwd)"/${{ inputs.shared-dir }}:/mnt/user          \
+        ghcr.io/antmicro/renode-linux-runner-action             \
+        "${{ inputs.renode-run }}"   \
+        "${{ inputs.devices }}"
+      shell: bash

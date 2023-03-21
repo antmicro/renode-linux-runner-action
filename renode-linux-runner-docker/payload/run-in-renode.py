@@ -208,20 +208,15 @@ def add_devices(devices: str):
             print(f"WARNING: Device {device_name} not found")
 
 
-def create_shared_directory_image(shared_directory: str):
+def create_shared_directory_image():
     """
     Creates an image of the shared directory that will be mounted into the Renode machine.
     When creating the image fails, it exits from the script with the same error code as failing command.
-
-    Parameters
-    ----------
-    shared_directory : str
-        Path to the shared directory
     """
 
     try:
         run(["truncate", "drive.img", "-s", "100M"], check=True)
-        run(["mkfs.ext4", "-d", shared_directory, "drive.img"],
+        run(["mkfs.ext4", "-d", "/mnt/user", "drive.img"],
             check=True,
             stdout=DEVNULL)
     except CalledProcessError as e:
@@ -286,12 +281,7 @@ def setup_renode():
         child.logfile_read = FilteredStdout(sys_stdout, CR, "")
 
         run_cmd(child, "(monitor)", "include @/hifive.resc")
-        run_cmd(child, "(hifive-unleashed)", "machine UnregisterFromParent gpio")
-        run_cmd(
-            child, "(hifive-unleashed)",
-            "machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'"
-        )
-        run_cmd(child, "(hifive-unleashed)", "virtio LoadImage @drive.img")
+
         run_cmd(child, "(hifive-unleashed)", "start")
         run_cmd(child, "(hifive-unleashed)", "uart_connect sysbus.uart0")
 
@@ -302,10 +292,15 @@ def setup_renode():
         elif index == 1:
             sys_exit(1)
 
+        # Adding devices
+
         run_cmd(child, "#", "dmesg -n 1")
         for device in added_devices:
             for command in device.add_commands:
                 run_cmd(child, "#", command)
+
+        # Extracting files from Virtio
+
         run_cmd(child, "#", "mkdir /mnt/drive")
         run_cmd(child, "#", "mount /dev/vda /mnt/drive")
         run_cmd(child, "#", "cd /mnt/drive")
@@ -344,7 +339,6 @@ def run_cmds_in_renode(commands_to_run: str):
             # GitHub workflow log GUI interprets this sequence as newline.
             child.logfile_read = FilteredStdout(sys_stdout, CR, "")
 
-            sleep(5)
             child.sendline(cmd)
             child.expect_exact("#", timeout=None)
 
@@ -362,14 +356,14 @@ def run_cmds_in_renode(commands_to_run: str):
 
 
 if __name__ == "__main__":
-    if len(sys_argv) <= 2:
+    if len(sys_argv) <= 1:
         print("Not enough input arguments")
         sys_exit(1)
 
-    if len(sys_argv) == 4 and sys_argv[3] != "":
-        add_devices(sys_argv[3])
+    if len(sys_argv) == 3 and sys_argv[2] != "":
+        add_devices(sys_argv[2])
 
-    create_shared_directory_image(sys_argv[1])
+    create_shared_directory_image()
     run_renode_in_background()
     setup_renode()
-    run_cmds_in_renode(sys_argv[2])
+    run_cmds_in_renode(sys_argv[1])

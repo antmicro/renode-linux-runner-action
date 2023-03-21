@@ -1,0 +1,55 @@
+name: Build and test
+on: [push, workflow_dispatch, repository_dispatch]
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      build: ${{ steps.filter.outputs.build }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            build:
+              - 'renode-linux-runner-docker/**'
+
+  build:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.build == 'true' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: docker build -t ghcr.io/${{ github.repository }} renode-linux-runner-docker
+      - name: Login to ghcr.io and release
+        uses: pyTooling/Actions/with-post-step@r0
+        with:
+          main: |
+            echo '${{ github.token }}' | docker login ghcr.io -u gha --password-stdin
+            docker push ghcr.io/${{ github.repository }}
+          post: docker logout ghcr.io
+  default-configuration-test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
+
+      - name: Run in Renode
+        uses: ./
+        with:
+          shared-dir: ./tests
+          renode-run: |
+            gpiodetect
+            sh gpio.sh
+            python test.py
+            pip install ./pyrav4l2
+            python controls-enumeration.py
+          devices: |
+            vivid
+            gpio 0 16
