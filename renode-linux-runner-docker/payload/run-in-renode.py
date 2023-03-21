@@ -299,7 +299,7 @@ def setup_renode():
             for command in device.add_commands:
                 run_cmd(child, "#", command)
 
-        # Files from Virtio extracting
+        # Extracting files from Virtio
 
         run_cmd(child, "#", "mkdir /mnt/drive")
         run_cmd(child, "#", "mount /dev/vda /mnt/drive")
