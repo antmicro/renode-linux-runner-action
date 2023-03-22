@@ -15,9 +15,9 @@ runs:
   steps:
     - id: run
       run: |
-        docker run
-        -v "$(pwd)"/${{ inputs.shared-dir }}:/mnt/user          \
-        ghcr.io/antmicro/renode-linux-runner-action             \
-        "${{ inputs.renode-run }}"   \
-        "${{ inputs.devices }}"
+        docker run                                              \
+            -v "$(pwd)"/${{ inputs.shared-dir }}:/mnt/user      \
+            ghcr.io/antmicro/renode-linux-runner-action         \
+            "${{ inputs.renode-run }}"                          \
+            "${{ inputs.devices }}"
       shell: bash
