@@ -55,11 +55,11 @@ Running multiple commands works the same way as the standard `run` command:
     renode-run: |
       command_to_run_1
       command_to_run_2
-    renode-run: |
+    devices: |
       vivid
       gpio
 ```
 
 Multiple devices can also be specified this way.
 
-The [renode-linux-runner-test](.github/workflows/run_action.yml) workflow contains an example usage of this action.
+The [renode-linux-runner-test](.github/workflows/build_and_test.yml) workflow contains an example usage of this action.
