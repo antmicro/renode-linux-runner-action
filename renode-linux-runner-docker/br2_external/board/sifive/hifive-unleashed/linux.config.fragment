@@ -47,6 +47,9 @@ CONFIG_VIDEO_VIVID=m
 # config gpio_mockup
 CONFIG_GPIO_MOCKUP=m
 
+# config i2c_stub
+CONFIG_I2C_STUB=m
+
 # debug
 CONFIG_IKCONFIG=y
 CONFIG_PROC_FS=y
