@@ -46,6 +46,8 @@ jobs:
         with:
           shared-dir: ./tests
           renode-run: |
+            ping -c 3 172.16.0.1
+            wget example.org
             gpiodetect
             sh gpio.sh
             sh i2c.sh

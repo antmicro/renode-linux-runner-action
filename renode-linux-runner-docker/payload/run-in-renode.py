@@ -22,6 +22,7 @@ from re import sub as re_sub, compile as re_compile
 from dataclasses import dataclass
 from typing import Any, Protocol
 from string import hexdigits
+from datetime import datetime
 
 CR = r'\r'
 
@@ -337,6 +338,25 @@ def setup_renode():
         run_cmd(child, "#", "cd /mnt/drive")
         run_cmd(child, "#", "mkdir -p /sys/kernel/debug")
         run_cmd(child, "#", "mount -t debugfs nodev /sys/kernel/debug")
+
+        # Network configuration
+        # This configuration allows simulated linux to connect to
+        # the tap0 interface created in the host 
+
+        run_cmd(child, "#", "ip addr add 172.16.0.2/16 dev eth0")
+        run_cmd(child, "#", "ip route add default via 172.16.0.1")
+        run_cmd(child, "#", 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf') # adds dns server address
+
+        now = datetime.now()
+
+        run_cmd(child, "#", f'date -s "{now.strftime("%Y-%m-%d %H:%M:%S")}"')
+
+        # pip configuration
+        # Disable pip version checking. Pip runs very slowly in Renode without this setting.
+
+        run_cmd(child, "#", "mkdir -p $HOME/.config/pip")
+        run_cmd(child, "#", 'echo "[global]" >> $HOME/.config/pip/pip.conf')
+        run_cmd(child, "#", 'echo "disable-pip-version-check = True" >> $HOME/.config/pip/pip.conf')
 
         child.expect_exact("#")
     except px_TIMEOUT:

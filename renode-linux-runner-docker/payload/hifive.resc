@@ -1,5 +1,9 @@
 $name?="hifive-unleashed"
 
+emulation CreateTap "tap0" "tap"
+emulation CreateSwitch "switch0"
+connector Connect host.tap switch0
+
 using sysbus
 mach create $name
 machine LoadPlatformDescription @platforms/cpus/sifive-fu540.repl
@@ -7,6 +11,8 @@ machine LoadPlatformDescription @platforms/cpus/sifive-fu540.repl
 machine UnregisterFromParent gpio
 machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'
 virtio LoadImage @drive.img
+
+connector Connect sysbus.ethernet switch0
 
 showAnalyzer uart0
 e51 LogFunctionNames true
