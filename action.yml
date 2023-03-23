@@ -16,8 +16,10 @@ runs:
     - id: run
       run: |
         docker run                                              \
-            -v "$(pwd)"/${{ inputs.shared-dir }}:/mnt/user      \
-            ghcr.io/antmicro/renode-linux-runner-action         \
-            "${{ inputs.renode-run }}"                          \
-            "${{ inputs.devices }}"
+        --cap-add=NET_ADMIN                                     \
+        --device /dev/net/tun:/dev/net/tun                      \
+        -v "$(pwd)"/${{ inputs.shared-dir }}:/mnt/user          \
+        ghcr.io/antmicro/renode-linux-runner-action             \
+        "${{ inputs.renode-run }}"                              \
+        "${{ inputs.devices }}"
       shell: bash
