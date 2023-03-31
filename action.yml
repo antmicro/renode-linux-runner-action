@@ -10,16 +10,34 @@ inputs:
     description: Devices to set up
     required: false
     default: ""
+  image:
+    description: Compiled linux image source
+    required: false
+    default: "https://github.com/antmicro/renode-linux-runner-action/releases/download/latest/images.tar.xz"
 runs:
   using: composite
   steps:
-    - id: run
+    - id: install-pip-packages
+      run: pip3 install pexpect
+      shell: bash
+
+    - id: download-renode
       run: |
-        docker run                                              \
-        --cap-add=NET_ADMIN                                     \
-        --device /dev/net/tun:/dev/net/tun                      \
-        -v "$(pwd)"/${{ inputs.shared-dir }}:/mnt/user          \
-        ghcr.io/antmicro/renode-linux-runner-action             \
-        "${{ inputs.renode-run }}"                              \
-        "${{ inputs.devices }}"
+        wget -q --no-verbose https://github.com/renode/renode/releases/download/v1.13.0/renode_1.13.0_amd64.deb &&
+        sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+        ./renode_1.13.0_amd64.deb
+      shell: bash
+
+    - id: get-images
+      run: ./scripts/get-image.sh ${{ inputs.image }} && tar xf images.tar.xz
+      shell: bash
+    
+    - id: copy-user-path
+      run: |
+        sudo mkdir -p /mnt/user && \
+        sudo cp -r ${{ inputs.shared-dir }}/* /mnt/user
+      shell: bash
+
+    - id: test
+      run: sudo python action/run-in-renode.py "${{ inputs.renode-run }}" "${{ inputs.devices }}"
       shell: bash

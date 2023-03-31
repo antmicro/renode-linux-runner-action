@@ -1,16 +1,38 @@
-name: Run action - pull request
+name: Build and test on pull request
 on: [pull_request]
 
-# It is not possible to test a pull request using run_action.yml 
-# because of the action uses the deployed docker image from GHCR.
-
 jobs:
-  default-configuration-test-on-pull-request:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - run: pip install PyYAML
+      - name: get packages
+        if: ${{ env.ACT }}
+        run: |
+         sudo apt update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+         python3-pip telnet iptables iproute2 bc cpio rsync
 
-      - name: Bash script
-        run: bash ./run-locally.sh
+      - name: build kernel
+        run: ./scripts/compile.sh
+
+      - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
+
+      - name: test
+        uses: ./
+        with:
+          shared-dir: ./tests
+          image: ./images.tar.xz
+          renode-run: |
+            ping -c 3 172.16.0.1
+            wget example.org
+            gpiodetect
+            sh gpio.sh
+            sh i2c.sh
+            python test.py
+            pip install ./pyrav4l2
+            python controls-enumeration.py
+          devices: |
+            vivid
+            gpio 0 16
+            i2c 0x1C
