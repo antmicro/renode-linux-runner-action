@@ -1,0 +1,107 @@
+From a14861d466df32a1cd090df8833056c721240b6d Mon Sep 17 00:00:00 2001
+From: Wiktor Ogrodnik <wogrodnik@internships.antmicro.com>
+Date: Thu, 6 Apr 2023 14:30:25 +0200
+Subject: [PATCH 2/2] disable multicore emulation
+
+---
+ arch/riscv/boot/dts/sifive/fu540-c000.dtsi | 77 +---------------------
+ 1 file changed, 1 insertion(+), 76 deletions(-)
+
+diff --git a/arch/riscv/boot/dts/sifive/fu540-c000.dtsi b/arch/riscv/boot/dts/sifive/fu540-c000.dtsi
+index 64c06c9b41dc..58d9f0ec8f13 100644
+--- a/arch/riscv/boot/dts/sifive/fu540-c000.dtsi
++++ b/arch/riscv/boot/dts/sifive/fu540-c000.dtsi
+@@ -61,78 +61,6 @@ cpu1_intc: interrupt-controller {
+ 				interrupt-controller;
+ 			};
+ 		};
+-		cpu2: cpu@2 {
+-			compatible = "sifive,u54-mc", "sifive,rocket0", "riscv";
+-			d-cache-block-size = <64>;
+-			d-cache-sets = <64>;
+-			d-cache-size = <32768>;
+-			d-tlb-sets = <1>;
+-			d-tlb-size = <32>;
+-			device_type = "cpu";
+-			i-cache-block-size = <64>;
+-			i-cache-sets = <64>;
+-			i-cache-size = <32768>;
+-			i-tlb-sets = <1>;
+-			i-tlb-size = <32>;
+-			mmu-type = "riscv,sv39";
+-			reg = <2>;
+-			riscv,isa = "rv64imafdc";
+-			tlb-split;
+-			next-level-cache = <&l2cache>;
+-			cpu2_intc: interrupt-controller {
+-				#interrupt-cells = <1>;
+-				compatible = "riscv,cpu-intc";
+-				interrupt-controller;
+-			};
+-		};
+-		cpu3: cpu@3 {
+-			compatible = "sifive,u54-mc", "sifive,rocket0", "riscv";
+-			d-cache-block-size = <64>;
+-			d-cache-sets = <64>;
+-			d-cache-size = <32768>;
+-			d-tlb-sets = <1>;
+-			d-tlb-size = <32>;
+-			device_type = "cpu";
+-			i-cache-block-size = <64>;
+-			i-cache-sets = <64>;
+-			i-cache-size = <32768>;
+-			i-tlb-sets = <1>;
+-			i-tlb-size = <32>;
+-			mmu-type = "riscv,sv39";
+-			reg = <3>;
+-			riscv,isa = "rv64imafdc";
+-			tlb-split;
+-			next-level-cache = <&l2cache>;
+-			cpu3_intc: interrupt-controller {
+-				#interrupt-cells = <1>;
+-				compatible = "riscv,cpu-intc";
+-				interrupt-controller;
+-			};
+-		};
+-		cpu4: cpu@4 {
+-			compatible = "sifive,u54-mc", "sifive,rocket0", "riscv";
+-			d-cache-block-size = <64>;
+-			d-cache-sets = <64>;
+-			d-cache-size = <32768>;
+-			d-tlb-sets = <1>;
+-			d-tlb-size = <32>;
+-			device_type = "cpu";
+-			i-cache-block-size = <64>;
+-			i-cache-sets = <64>;
+-			i-cache-size = <32768>;
+-			i-tlb-sets = <1>;
+-			i-tlb-size = <32>;
+-			mmu-type = "riscv,sv39";
+-			reg = <4>;
+-			riscv,isa = "rv64imafdc";
+-			tlb-split;
+-			next-level-cache = <&l2cache>;
+-			cpu4_intc: interrupt-controller {
+-				#interrupt-cells = <1>;
+-				compatible = "riscv,cpu-intc";
+-				interrupt-controller;
+-			};
+-		};
+ 	};
+ 	soc {
+ 		#address-cells = <2>;
+@@ -147,10 +75,7 @@ plic0: interrupt-controller@c000000 {
+ 			interrupt-controller;
+ 			interrupts-extended = <
+ 				&cpu0_intc 0xffffffff
+-				&cpu1_intc 0xffffffff &cpu1_intc 9
+-				&cpu2_intc 0xffffffff &cpu2_intc 9
+-				&cpu3_intc 0xffffffff &cpu3_intc 9
+-				&cpu4_intc 0xffffffff &cpu4_intc 9>;
++				&cpu1_intc 0xffffffff &cpu1_intc 9>;
+ 		};
+ 		prci: clock-controller@10000000 {
+ 			compatible = "sifive,fu540-c000-prci";
+-- 
+2.30.2
+

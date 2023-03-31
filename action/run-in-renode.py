@@ -396,6 +396,9 @@ def setup_renode():
         run_cmd(child, "#", 'echo "[global]" >> $HOME/.config/pip/pip.conf')
         run_cmd(child, "#", 'echo "disable-pip-version-check = True" >> $HOME/.config/pip/pip.conf')
 
+        # increase git buffers
+        run_cmd(child, "#", 'git config --global http.maxRequestBuffer 60M')
+
         child.expect_exact("#")
     except px_TIMEOUT:
         print("Timeout!")

@@ -5,9 +5,8 @@ connector Connect host.tap switch0
 
 using sysbus
 mach create $name
-machine LoadPlatformDescription @platforms/cpus/sifive-fu540.repl
+machine LoadPlatformDescription @action/sifive-fu540.repl
 
-machine UnregisterFromParent gpio
 machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'
 virtio LoadImage @drive.img
 
@@ -24,7 +23,7 @@ $rootfs ?= @images/rootfs.cpio
 macro reset
 """
     sysbus LoadELF $elf
-    sysbus LoadFdt $fdt 0x88000000 "earlycon=sbi console=ttyS0 root=/dev/ram init=/sbin/init initrd=0x8d000000,60M"
+    sysbus LoadFdt $fdt 0x88000000 "earlycon=sbi console=ttyS0 root=/dev/ram init=/sbin/init initrd=0x8d000000,120M"
     sysbus LoadBinary $rootfs 0x8D000000
     sysbus LoadBinary $image 0x8B000000
 """

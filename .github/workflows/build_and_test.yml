@@ -46,8 +46,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
-
       - name: get packages
         if: ${{ env.ACT }}
         run: |
@@ -66,7 +64,7 @@ jobs:
             sh gpio.sh
             sh i2c.sh
             python test.py
-            pip install ./pyrav4l2
+            pip install git+https://github.com/antmicro/pyrav4l2.git
             python controls-enumeration.py
           devices: |
             vivid

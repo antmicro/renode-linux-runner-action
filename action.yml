@@ -17,6 +17,29 @@ inputs:
 runs:
   using: composite
   steps:
+
+    - id: copy-user-path
+      run: |
+        sudo mkdir -p ${{github.action_path}} && \
+        sudo mkdir -p /mnt/user && \
+        sudo cp -r "${{ inputs.shared-dir }}"/* /mnt/user
+      shell: bash
+
+    - id: get-images
+      run: |
+        if [ -f "${{ inputs.image }}" ] && [ $(realpath "${{ inputs.image }}") == "$(realpath ${{github.action_path}}/images.tar.xz)" ]; then \
+          echo File already exists;                                                                                                           \
+        elif [ -f "${{ inputs.image }}" ]; then                                                                                               \
+          cp "${{ inputs.image }}" ${{github.action_path}}/images.tar.xz;                                                                     \
+        else                                                                                                                                  \
+          wget -q --no-verbose "${{ inputs.image }}" -O ${{github.action_path}}/images.tar.xz;                                                \
+        fi
+      shell: bash
+
+    - id: decompress
+      run: cd ${{github.action_path}} && tar xf images.tar.xz
+      shell: bash
+
     - id: install-pip-packages
       run: pip3 install pexpect
       shell: bash
@@ -28,16 +51,6 @@ runs:
         ./renode_1.13.0_amd64.deb
       shell: bash
 
-    - id: get-images
-      run: ./scripts/get-image.sh ${{ inputs.image }} && tar xf images.tar.xz
-      shell: bash
-    
-    - id: copy-user-path
-      run: |
-        sudo mkdir -p /mnt/user && \
-        sudo cp -r ${{ inputs.shared-dir }}/* /mnt/user
-      shell: bash
-
     - id: test
-      run: sudo python action/run-in-renode.py "${{ inputs.renode-run }}" "${{ inputs.devices }}"
+      run: cd ${{github.action_path}} && sudo python action/run-in-renode.py "${{ inputs.renode-run }}" "${{ inputs.devices }}"
       shell: bash
