@@ -1,6 +1,8 @@
 name: Build and test
 on: [push, workflow_dispatch, repository_dispatch]
 
+permissions: write-all
+
 jobs:
   changes:
     runs-on: ubuntu-latest
@@ -10,28 +12,33 @@ jobs:
       build: ${{ steps.filter.outputs.build }}
     steps:
       - uses: actions/checkout@v3
+
       - uses: dorny/paths-filter@v2
         id: filter
         with:
+          base: ${{ github.ref }}
           filters: |
             build:
-              - 'renode-linux-runner-docker/**'
-
+              - 'br2-external/**'
   build:
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ needs.changes.outputs.build == 'true' }}
+    if: ${{ needs.changes.outputs.build == 'true' && !github.event.act }}
     steps:
       - uses: actions/checkout@v3
-      - name: Build
-        run: docker build -t ghcr.io/${{ github.repository }} renode-linux-runner-docker
-      - name: Login to ghcr.io and release
-        uses: pyTooling/Actions/with-post-step@r0
+
+      - name: build kernel
+        run: ./scripts/compile.sh
+
+      - name: send to releases
+        uses: svenstaro/upload-release-action@v2
         with:
-          main: |
-            echo '${{ github.token }}' | docker login ghcr.io -u gha --password-stdin
-            docker push ghcr.io/${{ github.repository }}
-          post: docker logout ghcr.io
+          repo_token: "${{ github.token }}"
+          file: images.tar.xz
+          asset_name: images.tar.xz
+          tag: latest
+          overwrite: true
+
   default-configuration-test:
     runs-on: ubuntu-latest
     needs: build
@@ -41,10 +48,17 @@ jobs:
 
       - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
 
-      - name: Run in Renode
+      - name: get packages
+        if: ${{ env.ACT }}
+        run: |
+         sudo apt update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+         python3-pip telnet iptables iproute2
+
+      - name: test
         uses: ./
         with:
           shared-dir: ./tests
+          image: https://github.com/${{ github.repository }}/releases/download/latest/images.tar.xz
           renode-run: |
             ping -c 3 172.16.0.1
             wget example.org

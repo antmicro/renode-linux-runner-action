@@ -25,6 +25,8 @@ from string import hexdigits
 from datetime import datetime
 
 CR = r'\r'
+HOST_INTERFACE = "eth0"
+TAP_INTERFACE = "tap0"
 
 
 class FilteredStdout(object):
@@ -297,6 +299,41 @@ def run_cmd(child_process: px_spawn,
     child_process.sendline(cmd_to_run)
 
 
+def setup_network():
+
+    child = px_spawn("sh", encoding="utf-8", timeout=10)
+
+    try:
+        child.expect_exact('#')
+        child.sendline('')
+
+        # FilteredStdout is used to remove \r characters from telnet output.
+        # GitHub workflow log GUI interprets this sequence as newline.
+        child.logfile_read = FilteredStdout(sys_stdout, CR, "")
+
+        run_cmd(child, "#", "telnet 127.0.0.1 1234")
+
+        run_cmd(child, "(monitor)", 'emulation CreateTap "tap0" "tap"')
+        child.expect_exact("(monitor)")
+        child.sendcontrol("]")
+        run_cmd(child, "telnet>", 'quit')
+
+        # This configuration allows simulated Linux to connect to the Internet.
+        # Linux in Renode has the static IP 172.16.0.2/16.
+
+        run_cmd(child, "#", f'ip addr add "172.16.0.1/16" dev {TAP_INTERFACE}')
+        run_cmd(child, "#", f"ip link set up dev {TAP_INTERFACE}")
+        run_cmd(child, "#", f"iptables -A FORWARD -i {TAP_INTERFACE} -o {HOST_INTERFACE} -j ACCEPT")
+        run_cmd(child, "#", f"iptables -A FORWARD -i {HOST_INTERFACE} -o {TAP_INTERFACE} -m state --state RELATED,ESTABLISHED -j ACCEPT")
+        run_cmd(child, "#", f"iptables -t nat -A POSTROUTING -o {HOST_INTERFACE} -j MASQUERADE")
+
+        child.expect_exact("#")
+
+    except px_TIMEOUT:
+        print("Timeout!")
+        sys_exit(1)
+
+
 def setup_renode():
     """
     Setups Renode instance and leaves it in the directory where the shared directory is mounted.
@@ -307,18 +344,19 @@ def setup_renode():
 
     try:
         child.expect_exact("'^]'.")
+        child.sendcontrol("c")
 
         # FilteredStdout is used to remove \r characters from telnet output.
         # GitHub workflow log GUI interprets this sequence as newline.
         child.logfile_read = FilteredStdout(sys_stdout, CR, "")
 
-        run_cmd(child, "(monitor)", "include @/hifive.resc")
+        run_cmd(child, "(monitor)", "include @action/hifive.resc")
 
         run_cmd(child, "(hifive-unleashed)", "start")
         run_cmd(child, "(hifive-unleashed)", "uart_connect sysbus.uart0")
 
         index = child.expect_exact(["buildroot login:", "Kernel panic"],
-                                   timeout=120)
+                                   timeout=240)
         if index == 0:
             child.sendline("root")
         elif index == 1:
@@ -341,11 +379,11 @@ def setup_renode():
 
         # Network configuration
         # This configuration allows simulated linux to connect to
-        # the tap0 interface created in the host 
+        # the tap0 interface created in the host
 
         run_cmd(child, "#", "ip addr add 172.16.0.2/16 dev eth0")
         run_cmd(child, "#", "ip route add default via 172.16.0.1")
-        run_cmd(child, "#", 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf') # adds dns server address
+        run_cmd(child, "#", 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf')  # adds dns server address
 
         now = datetime.now()
 
@@ -416,5 +454,6 @@ if __name__ == "__main__":
 
     create_shared_directory_image()
     run_renode_in_background()
+    setup_network()
     setup_renode()
     run_cmds_in_renode(sys_argv[1])
