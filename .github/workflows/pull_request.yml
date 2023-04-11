@@ -16,6 +16,8 @@ jobs:
       - name: build kernel
         run: ./scripts/compile.sh
 
+      - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
+
       - name: test
         uses: ./
         with:
@@ -28,7 +30,7 @@ jobs:
             sh gpio.sh
             sh i2c.sh
             python test.py
-            pip install git+https://github.com/antmicro/pyrav4l2.git
+            pip install ./pyrav4l2
             python controls-enumeration.py
           devices: |
             vivid

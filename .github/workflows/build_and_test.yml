@@ -52,6 +52,8 @@ jobs:
          sudo apt update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
          python3-pip telnet iptables iproute2
 
+      - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
+
       - name: test
         uses: ./
         with:
@@ -64,7 +66,7 @@ jobs:
             sh gpio.sh
             sh i2c.sh
             python test.py
-            pip install git+https://github.com/antmicro/pyrav4l2.git
+            pip install ./pyrav4l2
             python controls-enumeration.py
           devices: |
             vivid

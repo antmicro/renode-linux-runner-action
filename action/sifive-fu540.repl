@@ -1,3 +1,6 @@
+// Custom board - HiFive Unleashed singlecore
+// Three u54 cores are disabled here to increase emulation speed
+
 e51: CPU.RiscV64 @ sysbus
     cpuType: "rv64imac"
     hartId: 0

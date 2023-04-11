@@ -397,7 +397,14 @@ def setup_renode():
         run_cmd(child, "#", 'echo "disable-pip-version-check = True" >> $HOME/.config/pip/pip.conf')
 
         # increase git buffers
-        run_cmd(child, "#", 'git config --global http.maxRequestBuffer 60M')
+        # mitigates issues with broken pipe `Send failure: Broken pipe`
+        run_cmd(child, "#", 'git config --global http.maxRequestBuffer 240M')
+        run_cmd(child, "#", 'git config --global http.postBuffer 100M')
+        run_cmd(child, "#", 'git config --global core.compression 0')
+
+        run_cmd(child, "#", 'git config --global --unset https.proxy')
+        run_cmd(child, "#", 'git config --global --unset http.proxy')
+        run_cmd(child, "#", 'git config --global ssl.Verify false')
 
         child.expect_exact("#")
     except px_TIMEOUT:

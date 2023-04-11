@@ -1,6 +1,6 @@
 #!/bin/sh
 
-git clone --branch 2022.11.2 https://github.com/buildroot/buildroot buildroot
+git clone --branch 2022.11.3 https://github.com/buildroot/buildroot buildroot
 
 cd buildroot && \
 make BR2_EXTERNAL=../br2-external hifive_unleashed_defconfig && \
