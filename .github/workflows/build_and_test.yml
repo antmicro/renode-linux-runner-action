@@ -46,13 +46,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
-
       - name: get packages
         if: ${{ env.ACT }}
         run: |
          sudo apt update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
          python3-pip telnet iptables iproute2
+
+      - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
 
       - name: test
         uses: ./
