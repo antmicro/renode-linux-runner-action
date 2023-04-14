@@ -9,10 +9,11 @@ renode-linux-runner-action is a GitHub Action that can run scripts on Linux insi
 The emulated system is based on the [Buildroot 2022.11.3](https://github.com/buildroot/buildroot/tree/2022.11.3) and it runs on the RISC-V/HiFive Unleashed platform in [Renode 1.13.3](https://github.com/renode/renode).
 It contains the Linux kernel configured with some emulated devices enabled and it has the following packages installed:
 
-- Python 3.10.7
+- Python 3.10.8
 - pip 21.2.4
 - v4l2-utils 1.22.1
 - libgpiod tools 1.6.3
+- git 2.31.7
 
 ## Parameters
 
@@ -20,6 +21,8 @@ It contains the Linux kernel configured with some emulated devices enabled and i
 - `renode-run` - A command or a list of commands to run in Renode.
 - `devices` - List of devices to add to the workflow. If not specified, the action will not install any devices.
 - `image` - url of path to tar.xz archive with compiled embedded Linux image. If not specified, the action will use the default one. See releases for examples.
+- `python-packages` - python packages from pypi library or git repository that will be sideloaded into emulated Linux.
+- `repos` - git repositories that will be sideloaded into emulated Linux.
 
 ### Devices syntax
 

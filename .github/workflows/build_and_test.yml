@@ -52,23 +52,20 @@ jobs:
          sudo apt update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
          python3-pip telnet iptables iproute2
 
-      - run: git clone https://github.com/antmicro/pyrav4l2.git tests/pyrav4l2
-
       - name: test
         uses: ./
         with:
           shared-dir: ./tests
           image: https://github.com/${{ github.repository }}/releases/download/latest/images.tar.xz
           renode-run: |
-            ping -c 3 172.16.0.1
             wget example.org
             gpiodetect
             sh gpio.sh
             sh i2c.sh
             python test.py
-            pip install ./pyrav4l2
             python controls-enumeration.py
           devices: |
             vivid
             gpio 0 16
             i2c 0x1C
+          python-packages: git+https://github.com/antmicro/pyrav4l2.git
