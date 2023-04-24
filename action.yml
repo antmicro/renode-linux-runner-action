@@ -14,6 +14,14 @@ inputs:
     description: Compiled linux image source
     required: false
     default: "https://github.com/antmicro/renode-linux-runner-action/releases/download/latest/images.tar.xz"
+  python-packages:
+    description: Custom python packages that will be added to your shared dir
+    required: false
+    default: ""
+  repos:
+    description: Custom git repos that will be added to your shared dir
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -40,17 +48,26 @@ runs:
       run: cd ${{github.action_path}} && tar xf images.tar.xz
       shell: bash
 
-    - id: install-pip-packages
-      run: pip3 install pexpect
+    - id: install-packages
+      run: |
+        wget -q --no-verbose https://github.com/renode/renode/releases/download/v1.13.3/renode_1.13.3_amd64.deb && \
+        sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends                             \
+        ./renode_1.13.3_amd64.deb python3-venv
       shell: bash
 
-    - id: download-renode
-      run: |
-        wget -q --no-verbose https://github.com/renode/renode/releases/download/v1.13.3/renode_1.13.3_amd64.deb &&
-        sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-        ./renode_1.13.3_amd64.deb
+    - id: install-pip-packages
+      run: pip3 install pexpect virtualenv
+      shell: bash
+
+    - id: create-pip-virtual-environment
+      run: cd ${{github.action_path}} && mkdir -p venv-dir && python3 -m venv venv-dir
       shell: bash
 
     - id: test
-      run: cd ${{github.action_path}} && sudo python action/run-in-renode.py "${{ inputs.renode-run }}" "${{ inputs.devices }}"
+      run: |
+        cd ${{github.action_path}} && sudo python3 action/run-in-renode.py \
+        "${{ inputs.renode-run }}"                                         \
+        "${{ inputs.devices }}"                                            \
+        "${{ inputs.python-packages }}"                                    \
+        "${{ inputs.repos }}"
       shell: bash

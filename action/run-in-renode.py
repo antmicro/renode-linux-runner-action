@@ -23,10 +23,13 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 from string import hexdigits
 from datetime import datetime
+from json import loads as json_loads
+from os import getcwd as os_getcwd
 
 CR = r'\r'
 HOST_INTERFACE = "eth0"
 TAP_INTERFACE = "tap0"
+RENODE_PIP_PACKAGES_DIR = "./pip_packages"
 
 
 class FilteredStdout(object):
@@ -144,7 +147,7 @@ class Device_Prototype:
         commands that is needed to add device
     params: list[str]
         default parameters
-    command_action: list[tuple[str, int]]
+    command_action: list[tuple[Action, int]]
         defines number of parameters needed and the
         Action itself
     """
@@ -185,6 +188,15 @@ available_devices = {
 
 
 added_devices: list[Device] = []
+
+
+default_packages = []
+
+
+downloaded_packages = []
+
+
+downloaded_repos = []
 
 
 def add_devices(devices: str):
@@ -242,14 +254,125 @@ def add_devices(devices: str):
             print(f"WARNING: Device {device_name} not found")
 
 
+def get_package(child: px_spawn, package_name: str):
+    """
+    Download selected python package for riscv64 platform.
+
+    Parameters
+    ----------
+    child: px_spawn
+        pexpect spawn with shell and python virtual environment enabled
+    package_name: str
+        package to download
+    """
+
+    global downloaded_packages
+
+    child.sendcontrol('c')
+    run_cmd(child, "(venv-dir) #", f"pip download {package_name} --platform=linux_riscv64 --no-deps --progress-bar off --disable-pip-version-check")
+    child.expect_exact('(venv-dir) #')
+
+    # Removes strange ASCII control codes that appear during some 'pip download' runs.
+    ansi_escape = re_compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
+    output_str: str = ansi_escape.sub('', child.before)
+
+    downloaded_packages += [file.split(' ')[1] for file in output_str.splitlines() if file.startswith('Saved')]
+
+
+def add_packages(packages: str):
+    """
+    Download all selected python packages and their dependencies
+    for the riscv64 platform to sideload it later to emulated Linux.
+    Parameters
+    ----------
+    packages: str
+        raw string from github action, syntax defined in README.md
+    """
+
+    child = px_spawn(f'sh -c "cd {os_getcwd()};exec /bin/sh"', encoding="utf-8", timeout=60)
+
+    try:
+        child.expect_exact('#')
+        child.sendline('')
+
+        # FilteredStdout is used to remove \r characters from telnet output.
+        # GitHub workflow log GUI interprets this sequence as newline.
+        child.logfile_read = FilteredStdout(sys_stdout, CR, "")
+
+        run_cmd(child, "#", ". ./venv-dir/bin/activate")
+
+        # Since the pip version in Ubuntu 22.04 is 22.0.2 and the first stable pip that supporting the --report flag is 23.0,
+        # pip needs to be updated in venv. This workaround may be removed later.
+        run_cmd(child, "(venv-dir) #", "pip -q install pip==23.0.1 --progress-bar off --disable-pip-version-check")
+
+        for package in default_packages + packages.splitlines():
+
+            print(f"processing: {package}")
+
+            # prepare report
+            run_cmd(child, "(venv-dir) #", f"pip install -q {package} --dry-run --report report.json --progress-bar off --disable-pip-version-check")
+            child.expect_exact("(venv-dir)")
+
+            with open("report.json", "r", encoding="utf-8") as report_file:
+                report = json_loads(report_file.read())
+
+            print(f"Packages to install: {len(report['install'])}")
+
+            for dependency in report["install"]:
+
+                dependency_name = dependency["metadata"]["name"] + "==" + dependency["metadata"]["version"] \
+                    if "vcs_info" not in dependency["download_info"] \
+                    else "git+" + dependency["download_info"]["url"] + "@" + dependency["download_info"]["vcs_info"]["commit_id"]
+                get_package(child, dependency_name)
+
+            child.sendcontrol("c")
+
+        run_cmd(child, "(venv-dir) #", "deactivate")
+        child.expect_exact("#")
+    except px_TIMEOUT:
+        print("Timeout!")
+        sys_exit(1)
+
+
+def add_repos(repos: str):
+    """
+    Download all selected git repos to sideload it later to emulated Linux.
+
+    Parameters
+    ----------
+    repos: str
+        raw string from github action, syntax defined in README.md
+    """
+
+    global downloaded_repos
+
+    for repo in repos.splitlines():
+
+        repo = repo.split(' ')
+        repo, folder = repo[0], repo[1] if len(repo) > 1 else repo[0].split('/')[-1]
+
+        print(f'Cloning {repo}' + f'to {folder}' if folder != '' else '')
+        run(['git', 'clone', repo, folder],)
+
+        downloaded_repos += [folder]
+
+
 def create_shared_directory_image():
     """
     Creates an image of the shared directory that will be mounted into the Renode machine.
     When creating the image fails, it exits from the script with the same error code as failing command.
     """
 
+    run(["mkdir", "-p", f"/mnt/user/{RENODE_PIP_PACKAGES_DIR}"])
+
+    for package in downloaded_packages:
+        run(['mv', package, f"/mnt/user/{RENODE_PIP_PACKAGES_DIR}"])
+
+    for repo in downloaded_repos:
+        run(['mv', repo, "/mnt/user"])
+
     try:
-        run(["truncate", "drive.img", "-s", "100M"], check=True)
+        run(["truncate", "drive.img", "-s", "200M"], check=True)
         run(["mkfs.ext4", "-d", "/mnt/user", "drive.img"],
             check=True,
             stdout=DEVNULL)
@@ -300,6 +423,9 @@ def run_cmd(child_process: px_spawn,
 
 
 def setup_network():
+    """
+    Setups host tap interface and connect it to Renode.
+    """
 
     child = px_spawn("sh", encoding="utf-8", timeout=10)
 
@@ -371,9 +497,8 @@ def setup_renode():
 
         # Extracting files from Virtio
 
-        run_cmd(child, "#", "mkdir /mnt/drive")
-        run_cmd(child, "#", "mount /dev/vda /mnt/drive")
-        run_cmd(child, "#", "cd /mnt/drive")
+        run_cmd(child, "#", "mount /dev/vda /mnt")
+        run_cmd(child, "#", "cd /mnt")
         run_cmd(child, "#", "mkdir -p /sys/kernel/debug")
         run_cmd(child, "#", "mount -t debugfs nodev /sys/kernel/debug")
 
@@ -389,13 +514,6 @@ def setup_renode():
 
         run_cmd(child, "#", f'date -s "{now.strftime("%Y-%m-%d %H:%M:%S")}"')
 
-        # pip configuration
-        # Disable pip version checking. Pip runs very slowly in Renode without this setting.
-
-        run_cmd(child, "#", "mkdir -p $HOME/.config/pip")
-        run_cmd(child, "#", 'echo "[global]" >> $HOME/.config/pip/pip.conf')
-        run_cmd(child, "#", 'echo "disable-pip-version-check = True" >> $HOME/.config/pip/pip.conf')
-
         # increase git buffers
         # mitigates issues with broken pipe `Send failure: Broken pipe`
         run_cmd(child, "#", 'git config --global http.maxRequestBuffer 240M')
@@ -405,6 +523,38 @@ def setup_renode():
         run_cmd(child, "#", 'git config --global --unset https.proxy')
         run_cmd(child, "#", 'git config --global --unset http.proxy')
         run_cmd(child, "#", 'git config --global ssl.Verify false')
+
+        child.expect_exact("#")
+    except px_TIMEOUT:
+        print("Timeout!")
+        sys_exit(1)
+
+
+def setup_python():
+    """
+    Install previously downloaded python packages in emulated linux.
+    """
+
+    child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8", timeout=None)
+
+    try:
+        child.expect_exact("'^]'.")
+        child.sendcontrol("c")
+
+        # FilteredStdout is used to remove \r characters from telnet output.
+        # GitHub workflow log GUI interprets this sequence as newline.
+        child.logfile_read = FilteredStdout(sys_stdout, CR, "")
+
+        # pip configuration
+        # Disable pip version checking. Pip runs very slowly in Renode without this setting.
+
+        run_cmd(child, "#", "mkdir -p $HOME/.config/pip")
+        run_cmd(child, "#", 'echo "[global]" >> $HOME/.config/pip/pip.conf')
+        run_cmd(child, "#", 'echo "disable-pip-version-check = True" >> $HOME/.config/pip/pip.conf')
+
+        run_cmd(child, "#", f"pip install {' '.join([f'{RENODE_PIP_PACKAGES_DIR}/{package}' for package in downloaded_packages])} --no-index --no-deps --no-build-isolation")
+
+        run_cmd(child, "#", f"rm -r {RENODE_PIP_PACKAGES_DIR}/")
 
         child.expect_exact("#")
     except px_TIMEOUT:
@@ -459,11 +609,18 @@ if __name__ == "__main__":
         print("Not enough input arguments")
         sys_exit(1)
 
-    if len(sys_argv) == 3 and sys_argv[2] != "":
+    if len(sys_argv) >= 3 and sys_argv[2] != "":
         add_devices(sys_argv[2])
+
+    if len(sys_argv) >= 4 and sys_argv[3] != "":
+        add_packages(sys_argv[3])
+
+    if len(sys_argv) >= 5 and sys_argv[4] != "":
+        add_repos(sys_argv[4])
 
     create_shared_directory_image()
     run_renode_in_background()
     setup_network()
     setup_renode()
+    setup_python()
     run_cmds_in_renode(sys_argv[1])

@@ -13,7 +13,7 @@ virtio LoadImage @drive.img
 connector Connect sysbus.ethernet switch0
 
 # This setting increases emulation speed, thus mitigates networks errors and speedup user scripts.
-u54_1 PerformanceInMips 150
+machine SetAdvanceImmediately true
 
 showAnalyzer uart0
 e51 LogFunctionNames true
