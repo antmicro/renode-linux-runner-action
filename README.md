@@ -1,8 +1,14 @@
 # renode-linux-runner-action
 
-Copyright (c) 2022 [Antmicro](https://www.antmicro.com)
+Copyright (c) 2022-2023 [Antmicro](https://www.antmicro.com)
 
 renode-linux-runner-action is a GitHub Action that can run scripts on Linux inside the Renode emulation.
+
+> **Warning**
+> This action is under heavy development. We will do our best to avoid breaking
+> changes, but we cannot guarantee full backwards compatibility at this point.
+> We recommend using the `v0` tag to minimize chances of breakage. If your
+> workflow fails due to our changes, feel free to file an issue.
 
 ## Emulated system
 
@@ -27,7 +33,7 @@ It contains the Linux kernel configured with some emulated devices enabled and i
 ### Devices syntax
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@main
+- uses: antmicro/renode-linux-runner-action@v0
   with:
     devices: |
       device1 param1 param2 param3 ...
@@ -49,7 +55,7 @@ It contains the Linux kernel configured with some emulated devices enabled and i
 Running a single command using the `renode-run` parameter:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@main
+- uses: antmicro/renode-linux-runner-action@v0
   with:
     shared-dir: ./shared-dir
     renode-run: command_to_run
@@ -59,7 +65,7 @@ Running a single command using the `renode-run` parameter:
 Running multiple commands works the same way as the standard `run` command:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@main
+- uses: antmicro/renode-linux-runner-action@v0
   with:
     shared-dir: ./shared-dir
     renode-run: |
@@ -72,4 +78,4 @@ Running multiple commands works the same way as the standard `run` command:
 
 Multiple devices can also be specified this way.
 
-The [renode-linux-runner-test](.github/workflows/build_and_test.yml) workflow contains an example usage of this action.
+The [release](.github/workflows/release.yml) workflow contains an example usage of this action.

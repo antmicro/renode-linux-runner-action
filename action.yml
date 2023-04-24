@@ -13,7 +13,7 @@ inputs:
   image:
     description: Compiled linux image source
     required: false
-    default: "https://github.com/antmicro/renode-linux-runner-action/releases/download/latest/images.tar.xz"
+    default: ""
   python-packages:
     description: Custom python packages that will be added to your shared dir
     required: false
@@ -35,14 +35,22 @@ runs:
 
     - id: get-images
       run: |
-        if [ -f "${{ inputs.image }}" ] && [ $(realpath "${{ inputs.image }}") == "$(realpath ${{github.action_path}}/images.tar.xz)" ]; then \
-          echo File already exists;                                                                                                           \
-        elif [ -f "${{ inputs.image }}" ]; then                                                                                               \
-          cp "${{ inputs.image }}" ${{github.action_path}}/images.tar.xz;                                                                     \
-        else                                                                                                                                  \
-          wget -q --no-verbose "${{ inputs.image }}" -O ${{github.action_path}}/images.tar.xz;                                                \
+        if [ -z "$IMAGE" ]; then
+          IMAGE="https://github.com/$ACTION_REPO/releases/download/$ACTION_REF/images.tar.xz"
+        fi
+        if [ -f "$IMAGE" ] && [ $(realpath "$IMAGE") == "$(realpath ${{github.action_path}}/images.tar.xz)" ]; then
+          echo File already exists;
+        elif [ -f "$IMAGE" ]; then
+          cp "$IMAGE" ${{github.action_path}}/images.tar.xz;
+        else
+          wget -q --no-verbose "$IMAGE" -O ${{github.action_path}}/images.tar.xz;
         fi
       shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        # https://github.com/orgs/community/discussions/49245
+        ACTION_REPO: ${{ github.action_repository || github.repository }}
+        ACTION_REF: ${{ github.action_ref || github.ref_name }}
 
     - id: decompress
       run: cd ${{github.action_path}} && tar xf images.tar.xz
