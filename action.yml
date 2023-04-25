@@ -28,7 +28,7 @@ runs:
 
     - id: copy-user-path
       run: |
-        sudo mkdir -p ${{github.action_path}} &&           \
+        sudo mkdir -p ${{ github.action_path }} &&           \
         sudo mkdir -p /mnt/user &&                         \
         sudo cp -r "${{ inputs.shared-dir }}"/* /mnt/user
       shell: bash
@@ -38,12 +38,12 @@ runs:
         if [ -z "$IMAGE" ]; then
           IMAGE="https://github.com/$ACTION_REPO/releases/download/$ACTION_REF/images.tar.xz"
         fi
-        if [ -f "$IMAGE" ] && [ $(realpath "$IMAGE") == "$(realpath ${{github.action_path}}/images.tar.xz)" ]; then
+        if [ -f "$IMAGE" ] && [ $(realpath "$IMAGE") == "$(realpath ${{ github.action_path }}/images.tar.xz)" ]; then
           echo File already exists;
         elif [ -f "$IMAGE" ]; then
-          cp "$IMAGE" ${{github.action_path}}/images.tar.xz;
+          cp "$IMAGE" ${{ github.action_path }}/images.tar.xz;
         else
-          wget -q --no-verbose "$IMAGE" -O ${{github.action_path}}/images.tar.xz;
+          wget -q --no-verbose "$IMAGE" -O ${{ github.action_path }}/images.tar.xz;
         fi
       shell: bash
       env:
@@ -53,7 +53,7 @@ runs:
         ACTION_REF: ${{ github.action_ref || github.ref_name }}
 
     - id: decompress
-      run: cd ${{github.action_path}} && tar xf images.tar.xz
+      run: cd ${{ github.action_path }} && tar xf images.tar.xz
       shell: bash
 
     - id: install-packages
@@ -68,12 +68,12 @@ runs:
       shell: bash
 
     - id: create-pip-virtual-environment
-      run: cd ${{github.action_path}} && mkdir -p venv-dir && python3 -m venv venv-dir
+      run: cd ${GITHUB_ACTION_PATH} && mkdir -p venv-dir && python3 -m venv venv-dir
       shell: bash
 
     - id: test
       run: |
-        cd ${{github.action_path}} && sudo python3 action/run-in-renode.py \
+        cd ${GITHUB_ACTION_PATH} && sudo python3 action/run-in-renode.py \
         "${{ inputs.renode-run }}"                                         \
         "${{ inputs.devices }}"                                            \
         "${{ inputs.python-packages }}"                                    \
