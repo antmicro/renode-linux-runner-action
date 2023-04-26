@@ -1,0 +1,32 @@
+name: Run locally
+on: [workflow_dispatch]
+
+jobs:
+  run-locally:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.act }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: get packages
+        run: |
+         sudo apt update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+         python3-pip telnet iptables iproute2
+
+      - name: test
+        uses: ./
+        with:
+          shared-dir: ./tests
+          image: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/images.tar.xz
+          renode-run: |
+            wget example.org
+            gpiodetect
+            sh gpio.sh
+            sh i2c.sh
+            python test.py
+            python controls-enumeration.py
+          devices: |
+            vivid
+            gpio 0 16
+            i2c 0x1C
+          python-packages: git+https://github.com/antmicro/pyrav4l2.git

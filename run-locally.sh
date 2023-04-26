@@ -3,7 +3,7 @@
 RUNNER="$1"
 
 if [ -z "$1" ]; then
-    RUNNER="default-configuration-test"
+    RUNNER="run-locally"
 fi
 
 if ! command -v act &> /dev/null; then
@@ -11,7 +11,4 @@ if ! command -v act &> /dev/null; then
     exit
 fi
 
-echo -e "{\n  \"act\": true\n}" > env.json
-
-act -j $RUNNER -e env.json --container-options "--privileged"
-rm env.json
+act -j $RUNNER -e scripts/act-env.json --container-options "--privileged"
