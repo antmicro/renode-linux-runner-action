@@ -362,8 +362,9 @@ def create_shared_directory_image():
     Creates an image of the shared directory that will be mounted into the Renode machine.
     When creating the image fails, it exits from the script with the same error code as failing command.
     """
-
-    run(["mkdir", "-p", f"/mnt/user/{RENODE_PIP_PACKAGES_DIR}"])
+    
+    if len(downloaded_packages) > 0:
+        run(["mkdir", "-p", f"/mnt/user/{RENODE_PIP_PACKAGES_DIR}"])
 
     for package in downloaded_packages:
         run(['mv', package, f"/mnt/user/{RENODE_PIP_PACKAGES_DIR}"])
@@ -622,5 +623,6 @@ if __name__ == "__main__":
     run_renode_in_background()
     setup_network()
     setup_renode()
-    setup_python()
+    if len(downloaded_packages) > 0:
+        setup_python()
     run_cmds_in_renode(sys_argv[1])
