@@ -62,20 +62,14 @@ jobs:
   default-configuration-test:
     runs-on: ubuntu-latest
     needs: build
-    if: ${{ !failure() }}
+    if: ${{ !failure() && !github.env.act }}
     steps:
       - uses: actions/checkout@v3
-
-      - name: get packages
-        if: ${{ env.ACT }}
-        run: |
-         sudo apt update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-         python3-pip telnet iptables iproute2
 
       - name: test
         uses: ./
         with:
-          shared-dir: ./tests
+          shared-dir: ./tests 
           renode-run: |
             wget example.org
             gpiodetect
