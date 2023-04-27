@@ -496,12 +496,30 @@ def setup_renode():
             for command in device.add_commands:
                 run_cmd(child, "#", command)
 
-        # Extracting files from Virtio
+        # Set time
+
+        now = datetime.now()
+
+        run_cmd(child, "#", f'date -s "{now.strftime("%Y-%m-%d %H:%M:%S")}"')
+
+        # Preparing rootfs
 
         run_cmd(child, "#", "mount /dev/vda /mnt")
         run_cmd(child, "#", "cd /mnt")
+
+        run_cmd(child, "#", "mount -t proc /proc proc/")
+        run_cmd(child, "#", "mount -t sysfs /sys sys/")
+        run_cmd(child, "#", "mount -o bind /dev dev/")
+        run_cmd(child, "#", "mount -o bind /run run/")
+        run_cmd(child, "#", "chroot /mnt /bin/sh")
+
         run_cmd(child, "#", "mkdir -p /sys/kernel/debug")
         run_cmd(child, "#", "mount -t debugfs nodev /sys/kernel/debug")
+
+        # Extracting user data
+
+        run_cmd(child, "#", "mount /dev/vdb /root")
+        run_cmd(child, "#", "cd /root")
 
         # Network configuration
         # This configuration allows simulated linux to connect to
@@ -510,20 +528,6 @@ def setup_renode():
         run_cmd(child, "#", "ip addr add 172.16.0.2/16 dev eth0")
         run_cmd(child, "#", "ip route add default via 172.16.0.1")
         run_cmd(child, "#", 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf')  # adds dns server address
-
-        now = datetime.now()
-
-        run_cmd(child, "#", f'date -s "{now.strftime("%Y-%m-%d %H:%M:%S")}"')
-
-        # increase git buffers
-        # mitigates issues with broken pipe `Send failure: Broken pipe`
-        run_cmd(child, "#", 'git config --global http.maxRequestBuffer 240M')
-        run_cmd(child, "#", 'git config --global http.postBuffer 100M')
-        run_cmd(child, "#", 'git config --global core.compression 0')
-
-        run_cmd(child, "#", 'git config --global --unset https.proxy')
-        run_cmd(child, "#", 'git config --global --unset http.proxy')
-        run_cmd(child, "#", 'git config --global ssl.Verify false')
 
         child.expect_exact("#")
     except px_TIMEOUT:
