@@ -26,9 +26,18 @@ runs:
   using: composite
   steps:
 
+    - id: check-required-python-version
+      run: |
+        printf -v VERSIONS '%s\n%s' "$(python3 --version | awk '{ print $2 }')" "3.9"
+        if [[ "$VERSIONS" = "$(sort -V <<< "$VERSIONS")" ]]; then
+          echo "Minimum Python version required is 3.9"
+          exit 1
+        fi
+      shell: bash
+
     - id: copy-user-path
       run: |
-        sudo mkdir -p ${{ github.action_path }} &&           \
+        sudo mkdir -p ${GITHUB_ACTION_PATH} &&             \
         sudo mkdir -p /mnt/user &&                         \
         sudo cp -r "${{ inputs.shared-dir }}"/* /mnt/user
       shell: bash
@@ -38,12 +47,12 @@ runs:
         if [ -z "$IMAGE" ]; then
           IMAGE="https://github.com/$ACTION_REPO/releases/download/$ACTION_REF/images.tar.xz"
         fi
-        if [ -f "$IMAGE" ] && [ $(realpath "$IMAGE") == "$(realpath ${{ github.action_path }}/images.tar.xz)" ]; then
-          echo File already exists;
+        if [ -f "$IMAGE" ] && [ $(realpath "$IMAGE") == "$(realpath ${GITHUB_ACTION_PATH}/images.tar.xz)" ]; then
+          echo File already exists
         elif [ -f "$IMAGE" ]; then
-          cp "$IMAGE" ${{ github.action_path }}/images.tar.xz;
+          cp "$IMAGE" ${GITHUB_ACTION_PATH}/images.tar.xz
         else
-          wget -q --no-verbose "$IMAGE" -O ${{ github.action_path }}/images.tar.xz;
+          wget -q --no-verbose "$IMAGE" -O ${GITHUB_ACTION_PATH}/images.tar.xz
         fi
       shell: bash
       env:
@@ -53,7 +62,7 @@ runs:
         ACTION_REF: ${{ github.action_ref || github.ref_name }}
 
     - id: decompress
-      run: cd ${{ github.action_path }} && tar xf images.tar.xz
+      run: cd ${GITHUB_ACTION_PATH} && tar xf images.tar.xz
       shell: bash
 
     - id: install-packages
@@ -73,7 +82,7 @@ runs:
 
     - id: test
       run: |
-        cd ${GITHUB_ACTION_PATH} && sudo python3 action/run-in-renode.py \
+        cd ${GITHUB_ACTION_PATH} && sudo python3 action/run-in-renode.py   \
         "${{ inputs.renode-run }}"                                         \
         "${{ inputs.devices }}"                                            \
         "${{ inputs.python-packages }}"                                    \
