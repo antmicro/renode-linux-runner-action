@@ -26,10 +26,13 @@ jobs:
             gpiodetect
             sh gpio.sh
             sh i2c.sh
-            python test.py
-            python controls-enumeration.py
+            python pyrav4l2/.github/save_examples.py pyrav4l2/README.md
+            python examples/controls-enumeration.py
           devices: |
             vivid
             gpio 0 16
             i2c 0x1C
-          python-packages: git+https://github.com/antmicro/pyrav4l2.git
+          python-packages: |
+            git+https://github.com/antmicro/pyrav4l2.git@3c071a7494b6b67263c4dddb87b47025338fd960
+            git+https://github.com/antmicro/tuttest.git@c44309e0365c54759fb36864fb77bf8b347bd647
+          repos: https://github.com/antmicro/pyrav4l2.git pyrav4l2
