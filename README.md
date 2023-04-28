@@ -23,7 +23,7 @@ It contains the Linux kernel configured with some emulated devices enabled and i
 
 ## Parameters
 
-- `shared-dir` - Path to the shared directory. Contents of this directory will be mounted in Renode. The embedded Linux in Renode will start in this directory.
+- `shared-dir` - Path to the shared directory. Contents of this directory will be mounted in Renode. The embedded Linux in Renode will start in this directory. Any other file from your repository/Docker container will not be visible.
 - `renode-run` - A command or a list of commands to run in Renode.
 - `devices` - List of devices to add to the workflow. If not specified, the action will not install any devices.
 - `image` - url of path to tar.xz archive with compiled embedded Linux image. If not specified, the action will use the default one. See releases for examples.
@@ -79,3 +79,56 @@ Running multiple commands works the same way as the standard `run` command:
 Multiple devices can also be specified this way.
 
 The [release](.github/workflows/release.yml) workflow contains an example usage of this action.
+
+### Python packages
+
+This action offers sideloading Python packages that you want to use in the emulated system. You can select any package from PyPI or from a Git repository.
+
+For example:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dir: ./shared-dir
+    renode-run: python --version
+    python-packages: |
+      git+https://github.com/antmicro/pyrav4l2.git
+      pytest
+```
+
+You can also pass the specific version requirement:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dir: ./shared-dir
+    renode-run: python --version
+    python-packages: |
+      git+https://github.com/antmicro/pyrav4l2.git@3c071a7
+      pytest==5.3.0
+      pyyaml>=5.3.1
+```
+
+The action will download all selected packages and their dependencies and install them later in the emulated Linux environment.
+
+## Git repositories
+
+If you want to clone other Git repositories to the emulated system, you can use the `repos` argument:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dir: ./shared-dir
+    renode-run: python --version
+    repos: https://github.com/antmicro/pyrav4l2.git
+```
+
+You can also specify the path into which you want to clone the repository:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dir: ./shared-dir
+    renode-run: python --version
+    repos: https://github.com/antmicro/pyrav4l2.git folder1
+```
