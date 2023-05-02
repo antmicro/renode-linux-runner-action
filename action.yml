@@ -73,7 +73,7 @@ runs:
       shell: bash
 
     - id: install-pip-packages
-      run: pip3 install -r requirements.txt
+      run: pip3 install -r ${GITHUB_ACTION_PATH}/requirements.txt
       shell: bash
 
     - id: create-pip-virtual-environment
