@@ -15,7 +15,7 @@ inputs:
     required: false
     default: ""
   python-packages:
-    description: Custom python packages that will be added to your shared dir
+    description: Custom python packages that will be sideloaded to emulated Linux
     required: false
     default: ""
   repos:
@@ -37,9 +37,8 @@ runs:
 
     - id: copy-user-path
       run: |
-        sudo mkdir -p ${GITHUB_ACTION_PATH} &&             \
-        sudo mkdir -p /mnt/user &&                         \
-        sudo cp -r "${{ inputs.shared-dir }}"/* /mnt/user
+        sudo mkdir -p ${GITHUB_ACTION_PATH}/user && \
+        sudo cp -r "${{ inputs.shared-dir }}"/* ${GITHUB_ACTION_PATH}/user
       shell: bash
 
     - id: get-images
@@ -82,9 +81,6 @@ runs:
 
     - id: test
       run: |
-        cd ${GITHUB_ACTION_PATH} && sudo python3 action/run-in-renode.py   \
-        "${{ inputs.renode-run }}"                                         \
-        "${{ inputs.devices }}"                                            \
-        "${{ inputs.python-packages }}"                                    \
-        "${{ inputs.repos }}"
+        cd ${GITHUB_ACTION_PATH} && sudo python3 action/run-in-renode.py \
+        '${{ toJSON(inputs) }}'
       shell: bash
