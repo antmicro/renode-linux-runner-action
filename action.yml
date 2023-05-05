@@ -1,11 +1,16 @@
 name: Renode linux tester
 inputs:
-  shared-dir:
-    description: Path to shared directory
-    required: true
   renode-run:
     description: Command or a list of commands to run in Renode
     required: true
+  shared-dirs:
+    description: Paths to shared directories
+    required: false
+    default:
+  shared-dir:
+    description: Path to shared directory (deprecated)
+    required: false
+    default: ""
   devices:
     description: Devices to set up
     required: false
@@ -26,6 +31,10 @@ inputs:
     description: Enable network in the emulated Linux? true/false
     required: false
     default: true
+  rootfs-size:
+    description: Rootfs size
+    required: false
+    default: "auto"
 runs:
   using: composite
   steps:
@@ -39,10 +48,9 @@ runs:
         fi
       shell: bash
 
-    - id: copy-user-path
+    - id: create-working-directory
       run: |
-        sudo mkdir -p ${GITHUB_ACTION_PATH}/user && \
-        sudo cp -r "${{ inputs.shared-dir }}"/* ${GITHUB_ACTION_PATH}/user
+        mkdir -p ${GITHUB_ACTION_PATH}
       shell: bash
 
     - id: get-images
@@ -85,6 +93,7 @@ runs:
 
     - id: test
       run: |
+        PWD=$(pwd) \
         cd ${GITHUB_ACTION_PATH} && sudo python3 action/run-in-renode.py \
-        '${{ toJSON(inputs) }}'
+        '${{ toJSON(inputs) }}' "$PWD"
       shell: bash

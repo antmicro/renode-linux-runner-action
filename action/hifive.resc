@@ -10,10 +10,6 @@ machine LoadPlatformDescription @action/sifive-fu540.repl
 machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'
 virtio LoadImage @images/rootfs.img
 
-# user data
-machine LoadPlatformDescriptionFromString 'virtioUser: Storage.VirtIOBlockDevice @ sysbus 0x100d0200 { IRQ -> plic@49 }'
-virtioUser LoadImage @drive.img
-
 connector Connect sysbus.ethernet switch0
 
 # This setting increases emulation speed, thus mitigates networks errors and speedup user scripts.
