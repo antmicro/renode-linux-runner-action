@@ -22,6 +22,10 @@ inputs:
     description: Custom git repos that will be added to your shared dir
     required: false
     default: ""
+  network:
+    description: Enable network in the emulated Linux? true/false
+    required: false
+    default: true
 runs:
   using: composite
   steps:

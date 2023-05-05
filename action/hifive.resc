@@ -1,7 +1,6 @@
 $name?="hifive-unleashed"
 
 emulation CreateSwitch "switch0"
-connector Connect host.tap switch0
 
 using sysbus
 mach create $name

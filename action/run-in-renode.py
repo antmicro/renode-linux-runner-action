@@ -95,7 +95,7 @@ def setup_network():
         sys_exit(1)
 
 
-def setup_renode():
+def setup_renode(network: bool):
     """
     Setups Renode instance and leaves it in the directory where the shared directory is mounted.
     It exits from the script with error code 1 if any of the commands timeouts or kernel panic is detected.
@@ -112,6 +112,9 @@ def setup_renode():
         child.logfile_read = FilteredStdout(sys_stdout, CR, "")
 
         run_cmd(child, "(monitor)", "include @action/hifive.resc")
+
+        if network:
+            run_cmd(child, "(hifive-unleashed)", "connector Connect host.tap switch0")
 
         run_cmd(child, "(hifive-unleashed)", "start")
         run_cmd(child, "(hifive-unleashed)", "uart_connect sysbus.uart0")
@@ -159,9 +162,10 @@ def setup_renode():
         # This configuration allows simulated linux to connect to
         # the tap0 interface created in the host
 
-        run_cmd(child, "#", "ip addr add 172.16.0.2/16 dev eth0")
-        run_cmd(child, "#", "ip route add default via 172.16.0.1")
-        run_cmd(child, "#", 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf')  # adds dns server address
+        if network:
+            run_cmd(child, "#", "ip addr add 172.16.0.2/16 dev eth0")
+            run_cmd(child, "#", "ip route add default via 172.16.0.1")
+            run_cmd(child, "#", 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf')  # adds dns server address
 
         child.expect_exact("#")
     except px_TIMEOUT:
@@ -255,16 +259,22 @@ if __name__ == "__main__":
         exit(1)
 
     renode_run = args.get("renode-run", None)
+    
+    network = True if args.get("network", "true") == "true" else False 
+
     add_devices(args.get("devices", ""))
     add_packages(args.get("python-packages", ""))
     add_repos(args.get("repos", ""))
-
+    
     assert renode_run, "renode-run argument is mandatory"
 
     create_shared_directory_image()
     run_renode_in_background()
-    setup_network()
-    setup_renode()
+
+    if network:
+        setup_network()
+
+    setup_renode(network)
 
     if len(downloaded_packages) > 0:
         setup_python()

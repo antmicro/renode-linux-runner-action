@@ -29,6 +29,7 @@ It contains the Linux kernel configured with some emulated devices enabled and i
 - `image` - url of path to tar.xz archive with compiled embedded Linux image. If not specified, the action will use the default one. See releases for examples.
 - `python-packages` - python packages from pypi library or git repository that will be sideloaded into emulated Linux.
 - `repos` - git repositories that will be sideloaded into emulated Linux.
+- `network` - Turn on the Internet in the emulated Linux? Default: true
 
 ### Devices syntax
 
@@ -132,3 +133,17 @@ You can also specify the path into which you want to clone the repository:
     renode-run: python --version
     repos: https://github.com/antmicro/pyrav4l2.git folder1
 ```
+
+## Network
+
+You can disable networking in the emulated Linux by passing the `netowrk: false` argument to the action
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dir: ./shared-dir
+    renode-run: python --version
+    network: false
+```
+
+This can be useful when running the action in the Matrix Docker container strategy if you do not have permission to create `tap` interfaces.
