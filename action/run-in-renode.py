@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-
-# Copyright 2022 Antmicro Ltd.
+# Copyright 2022-2023 Antmicro Ltd.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,347 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from common import run_cmd, FilteredStdout
+from devices import add_devices, added_devices
+from dependencies import add_packages, add_repos, downloaded_packages
+
 from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
 from subprocess import run, DEVNULL, CalledProcessError
 from sys import stdout as sys_stdout, exit as sys_exit, argv as sys_argv
-from time import sleep
-from re import sub as re_sub, compile as re_compile
-from dataclasses import dataclass
-from typing import Any, Protocol
-from string import hexdigits
 from datetime import datetime
-from json import loads as json_loads
-from os import getcwd as os_getcwd
+from time import sleep
+from json import loads as json_loads, decoder as json_decoder
+
 
 CR = r'\r'
 HOST_INTERFACE = "eth0"
 TAP_INTERFACE = "tap0"
-RENODE_PIP_PACKAGES_DIR = "./pip_packages"
-
-
-class FilteredStdout(object):
-    """
-    Stdout wrapper which replaces found pattern with 'replace' string.
-    """
-    def __init__(self, stream, pattern: str, replace: str):
-        """
-        Parameters
-        ----------
-        stream : stdout
-        pattern : regex pattern to match and replace with 'replace'
-        replace : string to replace found patterns
-        """
-        self.stream = stream
-        self.pattern = re_compile(pattern)
-        self.replace = replace
-
-    def _write(self, string):
-        self.stream.write(re_sub(self.pattern, self.replace, string))
-
-    def __getattr__(self, attr):
-        if attr == 'write':
-            return self._write
-        return getattr(self.stream, attr)
-
-
-class Action(Protocol):
-    """
-    Called by the add_devices function. Used for some
-    command when additional action is required.
-    """
-
-    """
-    If Action requirements are not satisfied this error will be printed
-    """
-    error: str
-
-    def __call__(self, *args: Any) -> str:
-        raise NotImplementedError
-
-    def check_args(self, *args: Any) -> bool:
-        """
-        Checks if the passed parameters are correct
-        """
-        raise NotImplementedError
-
-
-class GPIO_SplitDevice:
-    """
-    Replaces the number of GPIO lines with multiple
-    devices with a maximum of 32 lines each.
-    """
-    def __init__(self) -> None:
-        self.error = "the first parameter must be lower than the second"
-
-    def __call__(self, *args: str) -> str:
-
-        assert len(args) >= 3, "not enough parameters passed"
-        assert args[1].isdecimal() and args[2].isdecimal()
-
-        command: str = args[0]
-        l, r = int(args[1]), int(args[2])
-        gpio_ranges_params = []
-
-        while r - l > 32:
-            gpio_ranges_params += [l, l + 32]
-            l += 32
-
-        if l != r:
-            gpio_ranges_params += [l, r]
-
-        return [command.split("=")[0] + '=' +
-                ','.join([str(i) for i in gpio_ranges_params])]
-
-    def check_args(self, args: list[str]) -> bool:
-        return len(args) >= 2 and \
-               args[0].isdecimal() and \
-               args[1].isdecimal() and \
-               int(args[0]) < int(args[1])
-
-
-class I2C_SetDeviceAddress:
-    """
-    Set the simulated i2c device address that is connected
-    to the i2c bus.
-    """
-    def __init__(self) -> None:
-        self.error = "the address has to be hexadecimal number between 3 and 119"
-
-    def __call__(self, *args: str) -> str:
-
-        assert len(args) >= 2, "not enough parameters passed"
-
-        command: str = args[0]
-        addr = args[1]
-
-        return [command.format(addr)]
-
-    def check_args(self, args: list[str]) -> bool:
-        return len(args) == 1 and \
-               len(args[0]) >= 3 and \
-               args[0][0:2] == '0x' and \
-               all(c in hexdigits for c in args[0][2:]) and \
-               3 <= int(args[0], 16) <= 119
-
-
-@dataclass
-class Device_Prototype:
-    """
-    Device Prototype: it stores available devices that can be added.
-    Fields:
-    ----------
-    add_commands: list[str]
-        commands that is needed to add device
-    params: list[str]
-        default parameters
-    command_action: list[tuple[Action, int]]
-        defines number of parameters needed and the
-        Action itself
-    """
-    add_commands: list[str]
-    params: list[str]
-    command_action: list[tuple[Action, int]]
-
-
-@dataclass
-class Device:
-    """
-    Device Prototype: stores already added devices
-    Fields:
-    ----------
-    add_commands: list[str]
-        parsed commands to add the device
-    """
-    add_commands: list[str]
-
-
-available_devices = {
-    "vivid": Device_Prototype(
-                ["modprobe vivid"],
-                [],
-                [(None, 0)],
-            ),
-    "gpio": Device_Prototype(
-                ["modprobe gpio-mockup gpio_mockup_ranges={0},{1}"],
-                ['0', '32'],
-                [(GPIO_SplitDevice, 2)],
-            ),
-    "i2c": Device_Prototype(
-                ["modprobe i2c-stub chip_addr={0}"],
-                ["0x1C"],
-                [(I2C_SetDeviceAddress, 1)],
-    )
-}
-
-
-added_devices: list[Device] = []
-
-
-default_packages = []
-
-
-downloaded_packages = []
-
-
-downloaded_repos = []
-
-
-def add_devices(devices: str):
-    """
-    Parses arguments and commands, and adds devices to the
-    `available devices` list
-    Parameters
-    ----------
-    devices: str
-        raw string from github action, syntax defined in README.md
-    """
-
-    for device in devices.splitlines():
-        device = device.split()
-        device_name = device[0]
-
-        errors_occured = False
-
-        if device_name in available_devices:
-            device_proto = available_devices[device_name]
-
-            new_device = Device([])
-
-            args = device[1:]
-            args_pointer = 0
-
-            if len(device[1:]) != len(device_proto.params):
-                print(f"WARNING: for device {device_name}, wrong number "
-                      "of parameters, replaced with the default ones.")
-                args = device_proto.params
-
-            for it, command in enumerate(device_proto.add_commands):
-
-                params_action: Action = device_proto.command_action[it][0]
-                params_list_len: int = device_proto.command_action[it][1]
-
-                if params_list_len == 0 or not params_action:
-                    new_device.add_commands.append(command)
-                    continue
-
-                params_action = params_action()
-                params = args[args_pointer:args_pointer + params_list_len]
-
-                if params_action.check_args(params):
-                    new_device.add_commands += params_action(command, *params)
-                else:
-                    print(f"ERROR: for device {device_name} {params_action.error}.")
-                    errors_occured = True
-
-                args_pointer += params_list_len
-
-            if not errors_occured:
-                added_devices.append(new_device)
-        else:
-            print(f"WARNING: Device {device_name} not found")
-
-
-def get_package(child: px_spawn, package_name: str):
-    """
-    Download selected python package for riscv64 platform.
-
-    Parameters
-    ----------
-    child: px_spawn
-        pexpect spawn with shell and python virtual environment enabled
-    package_name: str
-        package to download
-    """
-
-    global downloaded_packages
-
-    child.sendcontrol('c')
-    run_cmd(child, "(venv-dir) #", f"pip download {package_name} --platform=linux_riscv64 --no-deps --progress-bar off --disable-pip-version-check")
-    child.expect_exact('(venv-dir) #')
-
-    # Removes strange ASCII control codes that appear during some 'pip download' runs.
-    ansi_escape = re_compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
-    output_str: str = ansi_escape.sub('', child.before)
-
-    downloaded_packages += [file.split(' ')[1] for file in output_str.splitlines() if file.startswith('Saved')]
-
-
-def add_packages(packages: str):
-    """
-    Download all selected python packages and their dependencies
-    for the riscv64 platform to sideload it later to emulated Linux.
-    Parameters
-    ----------
-    packages: str
-        raw string from github action, syntax defined in README.md
-    """
-
-    child = px_spawn(f'sh -c "cd {os_getcwd()};exec /bin/sh"', encoding="utf-8", timeout=60)
-
-    try:
-        child.expect_exact('#')
-        child.sendline('')
-
-        # FilteredStdout is used to remove \r characters from telnet output.
-        # GitHub workflow log GUI interprets this sequence as newline.
-        child.logfile_read = FilteredStdout(sys_stdout, CR, "")
-
-        run_cmd(child, "#", ". ./venv-dir/bin/activate")
-
-        # Since the pip version in Ubuntu 22.04 is 22.0.2 and the first stable pip that supporting the --report flag is 23.0,
-        # pip needs to be updated in venv. This workaround may be removed later.
-        run_cmd(child, "(venv-dir) #", "pip -q install pip==23.0.1 --progress-bar off --disable-pip-version-check")
-
-        for package in default_packages + packages.splitlines():
-
-            print(f"processing: {package}")
-
-            # prepare report
-            run_cmd(child, "(venv-dir) #", f"pip install -q {package} --dry-run --report report.json --progress-bar off --disable-pip-version-check")
-            child.expect_exact("(venv-dir)")
-
-            with open("report.json", "r", encoding="utf-8") as report_file:
-                report = json_loads(report_file.read())
-
-            print(f"Packages to install: {len(report['install'])}")
-
-            for dependency in report["install"]:
-
-                dependency_name = dependency["metadata"]["name"] + "==" + dependency["metadata"]["version"] \
-                    if "vcs_info" not in dependency["download_info"] \
-                    else "git+" + dependency["download_info"]["url"] + "@" + dependency["download_info"]["vcs_info"]["commit_id"]
-                get_package(child, dependency_name)
-
-            child.sendcontrol("c")
-
-        run_cmd(child, "(venv-dir) #", "deactivate")
-        child.expect_exact("#")
-    except px_TIMEOUT:
-        print("Timeout!")
-        sys_exit(1)
-
-
-def add_repos(repos: str):
-    """
-    Download all selected git repos to sideload it later to emulated Linux.
-
-    Parameters
-    ----------
-    repos: str
-        raw string from github action, syntax defined in README.md
-    """
-
-    global downloaded_repos
-
-    for repo in repos.splitlines():
-
-        repo = repo.split(' ')
-        repo, folder = repo[0], repo[1] if len(repo) > 1 else repo[0].split('/')[-1]
-
-        print(f'Cloning {repo}' + f'to {folder}' if folder != '' else '')
-        run(['git', 'clone', repo, folder],)
-
-        downloaded_repos += [folder]
 
 
 def create_shared_directory_image():
@@ -362,19 +34,10 @@ def create_shared_directory_image():
     Creates an image of the shared directory that will be mounted into the Renode machine.
     When creating the image fails, it exits from the script with the same error code as failing command.
     """
-    
-    if len(downloaded_packages) > 0:
-        run(["mkdir", "-p", f"/mnt/user/{RENODE_PIP_PACKAGES_DIR}"])
-
-    for package in downloaded_packages:
-        run(['mv', package, f"/mnt/user/{RENODE_PIP_PACKAGES_DIR}"])
-
-    for repo in downloaded_repos:
-        run(['mv', repo, "/mnt/user"])
 
     try:
         run(["truncate", "drive.img", "-s", "200M"], check=True)
-        run(["mkfs.ext4", "-d", "/mnt/user", "drive.img"],
+        run(["mkfs.ext4", "-d", "user", "drive.img"],
             check=True,
             stdout=DEVNULL)
     except CalledProcessError as e:
@@ -393,34 +56,6 @@ def run_renode_in_background():
         sys_exit(e.returncode)
 
     sleep(5)
-
-
-def run_cmd(child_process: px_spawn,
-            output_to_expect: str,
-            cmd_to_run: str,
-            timeout: int = -1):
-    """
-    Wait for expected output in process spawned using pexpect and then run specified command
-
-    Parameters
-    ----------
-    child_process : pexpect.spawn
-        The process spawned using pexpect
-    output_to_expect : str
-        The output for that pexpect should wait before sending the specified command
-    cmd_to_run : str
-        The commands that should be run in child process after the expected output appears
-    timeout : int
-        Maximum time for waiting for expected output (default: -1 - which means inheriting timeout from specified child process)
-
-    Raises
-    ------
-    pexpect.TIMEOUT
-        If waiting for the expected output timeouts
-    """
-
-    child_process.expect_exact(output_to_expect, timeout=timeout)
-    child_process.sendline(cmd_to_run)
 
 
 def setup_network():
@@ -455,7 +90,6 @@ def setup_network():
         run_cmd(child, "#", f"iptables -t nat -A POSTROUTING -o {HOST_INTERFACE} -j MASQUERADE")
 
         child.expect_exact("#")
-
     except px_TIMEOUT:
         print("Timeout!")
         sys_exit(1)
@@ -471,7 +105,7 @@ def setup_renode():
 
     try:
         child.expect_exact("'^]'.")
-        child.sendcontrol("c")
+        child.sendline('')
 
         # FilteredStdout is used to remove \r characters from telnet output.
         # GitHub workflow log GUI interprets this sequence as newline.
@@ -540,11 +174,11 @@ def setup_python():
     Install previously downloaded python packages in emulated linux.
     """
 
-    child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8", timeout=None)
+    child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8", timeout=10)
 
     try:
-        child.expect_exact("'^]'.")
-        child.sendcontrol("c")
+        child.expect_exact("'^]'.", timeout=30)
+        child.sendline('')
 
         # FilteredStdout is used to remove \r characters from telnet output.
         # GitHub workflow log GUI interprets this sequence as newline.
@@ -557,9 +191,9 @@ def setup_python():
         run_cmd(child, "#", 'echo "[global]" >> $HOME/.config/pip/pip.conf')
         run_cmd(child, "#", 'echo "disable-pip-version-check = True" >> $HOME/.config/pip/pip.conf')
 
-        run_cmd(child, "#", f"pip install {' '.join([f'{RENODE_PIP_PACKAGES_DIR}/{package}' for package in downloaded_packages])} --no-index --no-deps --no-build-isolation")
+        run_cmd(child, "#", f"pip install {' '.join([f'pip/{package}' for package in downloaded_packages])} --no-index --no-deps --no-build-isolation")
 
-        run_cmd(child, "#", f"rm -r {RENODE_PIP_PACKAGES_DIR}/")
+        run_cmd(child, "#", "rm -r pip", timeout=3600)
 
         child.expect_exact("#")
     except px_TIMEOUT:
@@ -610,23 +244,28 @@ def run_cmds_in_renode(commands_to_run: str):
 
 
 if __name__ == "__main__":
-    if len(sys_argv) <= 1:
-        print("Not enough input arguments")
-        sys_exit(1)
+    if len(sys_argv) != 2:
+        print("Wrong number of arguments. One json string is required!")
+        exit(1)
 
-    if len(sys_argv) >= 3 and sys_argv[2] != "":
-        add_devices(sys_argv[2])
+    try:
+        args: dict[str, str] = json_loads(sys_argv[1])
+    except json_decoder.JSONDecodeError:
+        print(f"JSON decoder error for string: {sys_argv[1]}")
+        exit(1)
 
-    if len(sys_argv) >= 4 and sys_argv[3] != "":
-        add_packages(sys_argv[3])
+    renode_run = args.get("renode-run", None)
+    add_devices(args.get("devices", ""))
+    add_packages(args.get("python-packages", ""))
+    add_repos(args.get("repos", ""))
 
-    if len(sys_argv) >= 5 and sys_argv[4] != "":
-        add_repos(sys_argv[4])
+    assert renode_run, "renode-run argument is mandatory"
 
     create_shared_directory_image()
     run_renode_in_background()
     setup_network()
     setup_renode()
+
     if len(downloaded_packages) > 0:
         setup_python()
-    run_cmds_in_renode(sys_argv[1])
+    run_cmds_in_renode(renode_run)
