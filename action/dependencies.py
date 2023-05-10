@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from common import run_cmd
+from image import shared_directories_action, shared_directories_actions
 from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
 from sys import exit as sys_exit
 from re import compile as re_compile
-from os import getcwd as os_getcwd
+from os import getcwd as os_getcwd, mkdir as os_mkdir
 from json import loads as json_loads
 
 
@@ -63,13 +64,23 @@ def add_packages(packages: str):
         raw string from github action, syntax defined in README.md
     """
 
+    if packages.strip() == '':
+        return
+
     child = px_spawn(f'sh -c "cd {os_getcwd()};exec /bin/sh"', encoding="utf-8", timeout=60)
 
     try:
         child.expect_exact('#')
         child.sendline('')
 
-        run_cmd(child, "#", "mkdir -p user/pip")
+        run_cmd(child, "#", "mkdir -p pip")
+        shared_directories_actions.append(
+            shared_directories_action(
+                "pip",
+                "/var/packages",
+            )
+        )
+
         run_cmd(child, "#", ". ./venv-dir/bin/activate")
 
         # Since the pip version in Ubuntu 22.04 is 22.0.2 and the first stable pip that supporting the --report flag is 23.0,
@@ -101,7 +112,7 @@ def add_packages(packages: str):
         run_cmd(child, "(venv-dir) #", "deactivate")
 
         for package in downloaded_packages:
-            run_cmd(child, "#", f"mv {package} user/pip/")
+            run_cmd(child, "#", f"mv {package} pip")
 
         child.expect_exact("#")
     except px_TIMEOUT:
@@ -119,6 +130,8 @@ def add_repos(repos: str):
         raw string from github action, syntax defined in README.md
     """
 
+    os_mkdir("repos")
+
     for repo in repos.splitlines():
 
         repo = repo.split(' ')
@@ -132,9 +145,16 @@ def add_repos(repos: str):
             child.expect_exact('#')
             child.sendline('')
 
-            run_cmd(child, "#", f"git clone {repo} user/{folder}")
+            run_cmd(child, "#", f"git clone {repo} repos/{folder}")
 
             child.expect_exact('#', timeout=3600)
         except px_TIMEOUT:
             print("Timeout!")
             sys_exit(1)
+
+        shared_directories_actions.append(
+            shared_directories_action(
+                "repos",
+                "/home",
+            )
+        )

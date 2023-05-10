@@ -69,7 +69,7 @@ jobs:
       - name: test
         uses: ./
         with:
-          shared-dir: ./tests 
+          shared-dirs: tests 
           renode-run: |
             wget example.org
             gpiodetect

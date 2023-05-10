@@ -15,33 +15,19 @@
 from common import run_cmd, FilteredStdout
 from devices import add_devices, added_devices
 from dependencies import add_packages, add_repos, downloaded_packages
+from image import prepare_shared_directories, burn_rootfs_image
 
 from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
-from subprocess import run, DEVNULL, CalledProcessError
+from subprocess import run, CalledProcessError
 from sys import stdout as sys_stdout, exit as sys_exit, argv as sys_argv
+from json import loads as json_loads, decoder as json_decoder
 from datetime import datetime
 from time import sleep
-from json import loads as json_loads, decoder as json_decoder
 
 
 CR = r'\r'
 HOST_INTERFACE = "eth0"
 TAP_INTERFACE = "tap0"
-
-
-def create_shared_directory_image():
-    """
-    Creates an image of the shared directory that will be mounted into the Renode machine.
-    When creating the image fails, it exits from the script with the same error code as failing command.
-    """
-
-    try:
-        run(["truncate", "drive.img", "-s", "200M"], check=True)
-        run(["mkfs.ext4", "-d", "user", "drive.img"],
-            check=True,
-            stdout=DEVNULL)
-    except CalledProcessError as e:
-        sys_exit(e.returncode)
 
 
 def run_renode_in_background():
@@ -95,11 +81,21 @@ def setup_network():
         sys_exit(1)
 
 
-def setup_renode():
+def setup_renode(network: bool):
     """
     Setups Renode instance and leaves it in the directory where the shared directory is mounted.
     It exits from the script with error code 1 if any of the commands timeouts or kernel panic is detected.
+
+    Parameters:
+    ----------
+    network: bool
+    If true it will configure network in emulated environment
     """
+
+    run_renode_in_background()
+
+    if network:
+        setup_network()
 
     child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8", timeout=10)
 
@@ -112,6 +108,9 @@ def setup_renode():
         child.logfile_read = FilteredStdout(sys_stdout, CR, "")
 
         run_cmd(child, "(monitor)", "include @action/hifive.resc")
+
+        if network:
+            run_cmd(child, "(hifive-unleashed)", "connector Connect host.tap switch0")
 
         run_cmd(child, "(hifive-unleashed)", "start")
         run_cmd(child, "(hifive-unleashed)", "uart_connect sysbus.uart0")
@@ -136,6 +135,15 @@ def setup_renode():
 
         run_cmd(child, "#", f'date -s "{now.strftime("%Y-%m-%d %H:%M:%S")}"')
 
+        # Network configuration
+        # This configuration allows simulated linux to connect to
+        # the tap0 interface created in the host
+
+        if network:
+            run_cmd(child, "#", "ip addr add 172.16.0.2/16 dev eth0")
+            run_cmd(child, "#", "ip route add default via 172.16.0.1")
+            run_cmd(child, "#", 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf')  # adds dns server address
+
         # Preparing rootfs
 
         run_cmd(child, "#", "mount /dev/vda /mnt")
@@ -145,23 +153,16 @@ def setup_renode():
         run_cmd(child, "#", "mount -t sysfs /sys sys/")
         run_cmd(child, "#", "mount -o bind /dev dev/")
         run_cmd(child, "#", "mount -o bind /run run/")
+        run_cmd(child, "#", "mount -o bind /tmp tmp/")
         run_cmd(child, "#", "chroot /mnt /bin/sh")
 
         run_cmd(child, "#", "mkdir -p /sys/kernel/debug")
         run_cmd(child, "#", "mount -t debugfs nodev /sys/kernel/debug")
 
-        # Extracting user data
+        run_cmd(child, "#", "cd /home")
 
-        run_cmd(child, "#", "mount /dev/vdb /root")
-        run_cmd(child, "#", "cd /root")
-
-        # Network configuration
-        # This configuration allows simulated linux to connect to
-        # the tap0 interface created in the host
-
-        run_cmd(child, "#", "ip addr add 172.16.0.2/16 dev eth0")
-        run_cmd(child, "#", "ip route add default via 172.16.0.1")
-        run_cmd(child, "#", 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf')  # adds dns server address
+        if len(downloaded_packages) > 0:
+            setup_python(child)
 
         child.expect_exact("#")
     except px_TIMEOUT:
@@ -169,21 +170,17 @@ def setup_renode():
         sys_exit(1)
 
 
-def setup_python():
+def setup_python(child: px_spawn):
     """
     Install previously downloaded python packages in emulated linux.
+
+    Parameters
+    ----------
+    child: pexpect.spawn
+    The running emulated Linux
     """
 
-    child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8", timeout=10)
-
     try:
-        child.expect_exact("'^]'.", timeout=30)
-        child.sendline('')
-
-        # FilteredStdout is used to remove \r characters from telnet output.
-        # GitHub workflow log GUI interprets this sequence as newline.
-        child.logfile_read = FilteredStdout(sys_stdout, CR, "")
-
         # pip configuration
         # Disable pip version checking. Pip runs very slowly in Renode without this setting.
 
@@ -191,11 +188,9 @@ def setup_python():
         run_cmd(child, "#", 'echo "[global]" >> $HOME/.config/pip/pip.conf')
         run_cmd(child, "#", 'echo "disable-pip-version-check = True" >> $HOME/.config/pip/pip.conf')
 
-        run_cmd(child, "#", f"pip install {' '.join([f'pip/{package}' for package in downloaded_packages])} --no-index --no-deps --no-build-isolation")
+        run_cmd(child, "#", f"pip install {' '.join([f'/var/packages/{package}' for package in downloaded_packages])} --no-index --no-deps --no-build-isolation")
 
-        run_cmd(child, "#", "rm -r pip", timeout=3600)
-
-        child.expect_exact("#")
+        run_cmd(child, "#", "rm -r /var/packages", timeout=3600)
     except px_TIMEOUT:
         print("Timeout!")
         sys_exit(1)
@@ -244,8 +239,8 @@ def run_cmds_in_renode(commands_to_run: str):
 
 
 if __name__ == "__main__":
-    if len(sys_argv) != 2:
-        print("Wrong number of arguments. One json string is required!")
+    if len(sys_argv) != 3:
+        print("Wrong number of arguments")
         exit(1)
 
     try:
@@ -254,18 +249,16 @@ if __name__ == "__main__":
         print(f"JSON decoder error for string: {sys_argv[1]}")
         exit(1)
 
-    renode_run = args.get("renode-run", None)
+    user_directory = sys_argv[2]
+
+    prepare_shared_directories(args.get("shared-dir", "") + '\n' + args.get("shared-dirs", ""))
     add_devices(args.get("devices", ""))
     add_packages(args.get("python-packages", ""))
     add_repos(args.get("repos", ""))
+    burn_rootfs_image(user_directory, args.get("rootfs-size", "auto"))
 
+    renode_run = args.get("renode-run", None)
     assert renode_run, "renode-run argument is mandatory"
 
-    create_shared_directory_image()
-    run_renode_in_background()
-    setup_network()
-    setup_renode()
-
-    if len(downloaded_packages) > 0:
-        setup_python()
+    setup_renode(args.get("network", "true") == "true")
     run_cmds_in_renode(renode_run)

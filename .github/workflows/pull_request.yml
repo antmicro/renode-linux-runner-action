@@ -19,8 +19,8 @@ jobs:
       - name: test
         uses: ./
         with:
-          shared-dir: ./tests
-          image: ./images.tar.xz
+          shared-dirs: tests
+          image: images.tar.xz
           renode-run: |
             wget example.org
             gpiodetect

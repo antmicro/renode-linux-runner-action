@@ -25,7 +25,6 @@ rm -rf output/target
 find output/ -name ".stamp_target_installed" -delete
 rm -f output/build/host-gcc-final-*/.stamp_host_installed
 
-
 # Set configuration for rootfs
 
 make BR2_EXTERNAL=../br2-external/rootfs hifive_unleashed_defconfig
@@ -33,7 +32,7 @@ make -j$(nproc)
 
 cd ..
 
-cp buildroot/output/images/rootfs.img images
+cp buildroot/output/images/rootfs.tar images
 rm -rf buildroot
 
 tar cJvf images.tar.xz images

@@ -23,12 +23,57 @@ It contains the Linux kernel configured with some emulated devices enabled and i
 
 ## Parameters
 
-- `shared-dir` - Path to the shared directory. Contents of this directory will be mounted in Renode. The embedded Linux in Renode will start in this directory. Any other file from your repository/Docker container will not be visible.
 - `renode-run` - A command or a list of commands to run in Renode.
+- `shared-dirs` - Shared directory paths. The contents of these directories will be mounted in Renode.
 - `devices` - List of devices to add to the workflow. If not specified, the action will not install any devices.
 - `image` - url of path to tar.xz archive with compiled embedded Linux image. If not specified, the action will use the default one. See releases for examples.
 - `python-packages` - python packages from pypi library or git repository that will be sideloaded into emulated Linux.
 - `repos` - git repositories that will be sideloaded into emulated Linux.
+- `network` - Turn on the Internet in the emulated Linux? Default: true
+- `rootfs-size` - Set size of the rootfs image. Default: auto
+
+### Renode run
+
+Running a single command using the `renode-run` parameter:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dirs: shared-dir
+    renode-run: command_to_run
+    devices: vivid
+```
+
+Running multiple commands works the same way as the standard `run` command:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dirs: shared-dir
+    renode-run: |
+      command_to_run_1
+      command_to_run_2
+    devices: |
+      vivid
+      gpio
+```
+
+### Shared dirs
+
+You can specify many directories that will be added to the rootfs. All files from these directories will be available in the specified target directories.
+
+In the following example, files from the `project-files` directory will be extracted to the `/opt/project` directory. If no destination directory is specified, the files will be extracted to `/home`.
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dirs: |
+      shared-dir1
+      shared-dir2
+      project-files /opt/project
+    renode-run: command_to_run
+    devices: vivid
+```
 
 ### Devices syntax
 
@@ -50,35 +95,7 @@ It contains the Linux kernel configured with some emulated devices enabled and i
 - [`i2c`](https://www.kernel.org/doc/html/v5.10/i2c/i2c-stub.html) - virtual device emulating `I2C` bus. Optional parameter:
   - chip_addr: 7 bit address 0x03 to 0x77 of the chip that simulates the EEPROM device and provides read and write commands to it.
 
-## Usage
-
-Running a single command using the `renode-run` parameter:
-
-```yaml
-- uses: antmicro/renode-linux-runner-action@v0
-  with:
-    shared-dir: ./shared-dir
-    renode-run: command_to_run
-    devices: vivid
-```
-
-Running multiple commands works the same way as the standard `run` command:
-
-```yaml
-- uses: antmicro/renode-linux-runner-action@v0
-  with:
-    shared-dir: ./shared-dir
-    renode-run: |
-      command_to_run_1
-      command_to_run_2
-    devices: |
-      vivid
-      gpio
-```
-
-Multiple devices can also be specified this way.
-
-The [release](.github/workflows/release.yml) workflow contains an example usage of this action.
+Multiple devices can be specified exactly like shared directories or commands to run.
 
 ### Python packages
 
@@ -132,3 +149,31 @@ You can also specify the path into which you want to clone the repository:
     renode-run: python --version
     repos: https://github.com/antmicro/pyrav4l2.git folder1
 ```
+
+## Network
+
+You can disable networking in the emulated Linux by passing the `network: false` argument to the action
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dir: ./shared-dir
+    renode-run: python --version
+    network: false
+```
+
+This can be useful when running the action in a container matrix strategy if you do not have permission to create `tap` interfaces.
+
+## Rootfs size
+
+The size of the mounted rootfs can be specified with the `rootfs-size` parameter. The parameter accepts the sizes in bytes (i.e. `1000000000`), kilobytes (i.e. `50000K`), megabytes (i.e. `512M`) or gigabytes (i.e. `1G`). The default `rootfs-size` value is `auto`; with this setting the size is calculated automatically.
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dir: shared-dir
+    renode-run: python --version
+    rootfs-size: 512M
+```
+
+The [release](.github/workflows/release.yml) workflow contains an example usage of this action.
