@@ -19,7 +19,6 @@ jobs:
           shared-dirs: tests
           image: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/images.tar.xz
           renode-run: |
-            ls /opt/ros
             wget example.org
             gpiodetect
             sh gpio.sh
