@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common import run_cmd, FilteredStdout
+from common import run_cmd, FilteredStdout, get_file
 from devices import add_devices, added_devices
 from dependencies import add_packages, add_repos, downloaded_packages
 from images import prepare_shared_directories, prepare_kernel_and_initramfs, burn_rootfs_image
@@ -23,6 +23,7 @@ from sys import stdout as sys_stdout, exit as sys_exit, argv as sys_argv
 from json import loads as json_loads, decoder as json_decoder
 from datetime import datetime
 from time import sleep
+from re import match as re_match
 
 
 CR = r'\r'
@@ -49,6 +50,61 @@ def run_renode_in_background():
         sys_exit(e.returncode)
 
     sleep(5)
+
+
+def get_machine_name(resc: str) -> str:
+    """
+    Get machine name from .resc file (used to waiting for command prompt in renode console)
+
+    Parameters:
+    ----------
+    resc: str
+        Path to resc file
+    """
+
+    with open(resc) as file:
+        for line in file:
+            match = re_match(r"^\s*\$name\s*\?=\s*\"(.*)\"\s*$", line)
+            if match:
+                return match.group(1)
+
+    return None
+
+
+def configure_board(arch: str, board: str, resc: str, repl: str):
+    """
+    Set the appropriate board resc and repl
+
+    Parameters:
+    ----------
+    arch: str
+        Selected processor architecture
+    board: str:
+        selected board, use to choose proper renode init script
+    resc: str
+        custom resc: URL or path
+    repl: str
+        custom repl: URL or path
+    """
+
+    if arch not in default_boards:
+        print("Architecture not supportted!")
+        sys_exit(1)
+
+    if board == "default":
+        board = default_boards[arch]
+
+    if board == "custom" and (resc == "default" or repl == "default"):
+        print("You have to provide resc and repl for custom board")
+        sys_exit(1)
+
+    if resc != "default":
+        get_file(resc, f"action/{board}/init.resc")
+
+    if repl != "default":
+        get_file(repl, f"action/{board}/platform.repl")
+
+    return (arch, board)
 
 
 def setup_network():
@@ -106,6 +162,12 @@ def setup_renode(board: str, network: bool):
     if network:
         setup_network()
 
+    machine = get_machine_name(f"action/{board}/init.resc")
+
+    if machine is None:
+        print("Machine name not found")
+        sys_exit(1)
+
     child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8", timeout=10)
 
     try:
@@ -119,10 +181,10 @@ def setup_renode(board: str, network: bool):
         run_cmd(child, "(monitor)", f"include @action/{board}/init.resc")
 
         if network:
-            run_cmd(child, "(hifive-unleashed)", "connector Connect host.tap switch0", timeout=240)
+            run_cmd(child, f"({machine})", "connector Connect host.tap switch0", timeout=240)
 
-        run_cmd(child, "(hifive-unleashed)", "start", timeout=240)
-        run_cmd(child, "(hifive-unleashed)", "uart_connect sysbus.uart0")
+        run_cmd(child, f"({machine})", "start", timeout=240)
+        run_cmd(child, f"({machine})", "uart_connect sysbus.uart0")
 
         index = child.expect(["buildroot login:", "Kernel panic", r"^#"], timeout=240)
 
@@ -271,21 +333,21 @@ if __name__ == "__main__":
     action_repo = sys_argv[3]
     action_ref = sys_argv[4]
 
-    arch = args.get("arch", "riscv64")
-    board = args.get("board", "default")
-
-    if arch not in default_boards:
-        print("Architecture not supportted!")
-        sys_exit(1)
-
-    if board == "default":
-        board = default_boards[arch]
+    arch, board = configure_board(
+        args.get("arch", "riscv64"),
+        args.get("board", "default"),
+        args.get("resc", "default"),
+        args.get("repl", "default")
+    )
 
     prepare_shared_directories(args.get("shared-dir", "") + '\n' + args.get("shared-dirs", ""))
     add_devices(args.get("devices", ""))
 
     kernel = args.get("kernel", "")
-    if kernel.strip() == "":
+    if kernel.strip() == "" and board == "custom":
+        print("You have to provide custom kernel for custom board.")
+        sys_exit(1)
+    elif kernel.strip() == "":
         kernel = DEFAULT_KERNEL_PATH.format(action_repo, action_ref, arch, board)
 
     prepare_kernel_and_initramfs(kernel)

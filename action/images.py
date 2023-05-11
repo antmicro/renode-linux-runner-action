@@ -196,7 +196,7 @@ def burn_rootfs_image(
 
         image = f"images/docker-image/{selected_layer}"
     else:
-        print(f"invalid image type: {image_type}")
+        print(f"image type: {image_type} not found")
         sys_exit(1)
 
     with tarfile_open(image) as tar:
