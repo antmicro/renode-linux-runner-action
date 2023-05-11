@@ -1,4 +1,4 @@
-From 973ad6959265ec5ad3c1cb329e41d4e3a7e3a95f Mon Sep 17 00:00:00 2001
+From 9c1057166890a91869a60851e8a8708883eb8921 Mon Sep 17 00:00:00 2001
 From: Wiktor Ogrodnik <wogrodnik@internships.antmicro.com>
 Date: Fri, 10 Mar 2023 10:25:27 +0100
 Subject: [PATCH 1/2] linux dts patches

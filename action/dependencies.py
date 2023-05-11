@@ -22,7 +22,7 @@ from json import loads as json_loads
 
 
 # names of python packages that should be installed by default
-default_packages = []
+default_packages = ["wheel"]
 
 
 # python packages files ready to sideload

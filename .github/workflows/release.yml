@@ -124,7 +124,6 @@ jobs:
           shared-dirs: tests
           renode-run: |
             wget example.org
-            gpiodetect
             sh gpio.sh
             sh i2c.sh
             python pyrav4l2/.github/save_examples.py pyrav4l2/README.md

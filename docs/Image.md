@@ -39,12 +39,12 @@ Currently, the following `image` configurations are provided:
 
 This image contains the following software:
 
-* Full busybox 1.35.0 with ash shell
-* Python 3.10.8
-* pip 21.2.4
+* Full busybox 1.36.0 with ash shell
+* Python 3.11.2
+* pip 22.3.1
 * v4l2-utils 1.22.1
 * libgpiod tools 1.6.3
-* git 2.31.7
+* git 2.39.3
 * curl 7.88.1
 
 ## Required native image components

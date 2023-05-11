@@ -260,7 +260,8 @@ def setup_python(child: px_spawn):
         run_cmd(child, "#", 'echo "[global]" >> $HOME/.config/pip/pip.conf')
         run_cmd(child, "#", 'echo "disable-pip-version-check = True" >> $HOME/.config/pip/pip.conf')
 
-        run_cmd(child, "#", f"pip install {' '.join([f'/var/packages/{package}' for package in downloaded_packages])} --no-index --no-deps --no-build-isolation")
+        for package in downloaded_packages:
+            run_cmd(child, "#", f"pip install /var/packages/{package} --no-index --no-deps --no-build-isolation --root-user-action=ignore", timeout=3600)
 
         run_cmd(child, "#", "rm -r /var/packages", timeout=3600)
     except px_TIMEOUT:
@@ -291,6 +292,8 @@ def run_cmds_in_renode(commands_to_run: str, fail_fast: bool):
             child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8")
 
             child.expect_exact("'^]'.", timeout=60)
+
+            print(" ", end="")
 
             # FilteredStdout is used to remove \r characters from telnet output.
             # GitHub workflow log GUI interprets this sequence as newline.
@@ -340,9 +343,6 @@ if __name__ == "__main__":
         args.get("repl", "default")
     )
 
-    prepare_shared_directories(args.get("shared-dir", "") + '\n' + args.get("shared-dirs", ""))
-    add_devices(args.get("devices", ""))
-
     kernel = args.get("kernel", "")
     if kernel.strip() == "" and board == "custom":
         print("You have to provide custom kernel for custom board.")
@@ -350,16 +350,22 @@ if __name__ == "__main__":
     elif kernel.strip() == "":
         kernel = DEFAULT_KERNEL_PATH.format(action_repo, action_ref, arch, board)
 
-    prepare_kernel_and_initramfs(kernel)
-
-    add_packages(arch, args.get("python-packages", ""))
-    add_repos(args.get("repos", ""))
-
     image = args.get("image", "")
     if image.strip() == "":
         image = DEFAULT_IMAGE_PATH.format(action_repo, action_ref, arch)
 
-    burn_rootfs_image(user_directory, image, arch, args.get("rootfs-size", "auto"), args.get("image-type", "native"))
+    add_devices(args.get("devices", ""))
+    prepare_kernel_and_initramfs(kernel)
+    prepare_shared_directories(args.get("shared-dir", "") + '\n' + args.get("shared-dirs", ""))
+    add_packages(arch, args.get("python-packages", ""))
+    add_repos(args.get("repos", ""))
+    burn_rootfs_image(
+        user_directory,
+        image,
+        arch,
+        args.get("rootfs-size", "auto"),
+        args.get("image-type", "native")
+    )
 
     renode_run = args.get("renode-run", None)
     assert renode_run, "renode-run argument is mandatory"
