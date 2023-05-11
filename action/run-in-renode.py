@@ -297,7 +297,7 @@ if __name__ == "__main__":
     if image.strip() == "":
         image = DEFAULT_IMAGE_PATH.format(action_repo, action_ref, arch)
 
-    burn_rootfs_image(user_directory, image, args.get("rootfs-size", "auto"), args.get("image-type", "native"))
+    burn_rootfs_image(user_directory, image, arch, args.get("rootfs-size", "auto"), args.get("image-type", "native"))
 
     renode_run = args.get("renode-run", None)
     assert renode_run, "renode-run argument is mandatory"

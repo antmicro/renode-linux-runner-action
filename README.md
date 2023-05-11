@@ -25,7 +25,8 @@ Using the default configuration, you can enable the devices you want and run com
 ### OS configuration
 
 - [`rootfs-size`](#rootfs-size) - Set size of the rootfs image. Default: auto
-- [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture. If not specified, the action will use the default one. See releases for examples.
+- [`image-type`](#image) - native or docker. Read about the differences in the [image section](#image)
+- [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture or docker image identifier. If not specified, the action will use the default one. See releases for examples.
 
 ### Borad and devices configuration
 
