@@ -1,2 +1,2 @@
-name: SIFIVE_RENODE_CI_ROOTFS
+name: RISCV64_RENODE_CI_ROOTFS
 desc: Linux embedded instance for use in github actions

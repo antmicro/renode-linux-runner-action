@@ -2,7 +2,9 @@
 
 Copyright (c) 2022-2023 [Antmicro](https://www.antmicro.com)
 
-renode-linux-runner-action is a GitHub Action that can run scripts on Linux inside the Renode emulation.
+This action enables users automatically test your projects that require certain Linux [devices](#devices) enabled, such as Video4Linux. Because we know that each project has very different configuration and ways to run it, we want to prepare an environment that's as configurable as possible.
+
+Using the default configuration, you can enable the devices you want and run commands and scripts in a real Linux system that runs inside [Renode](https://renode.io/).
 
 > **Warning**
 > This action is under heavy development. We will do our best to avoid breaking
@@ -10,55 +12,105 @@ renode-linux-runner-action is a GitHub Action that can run scripts on Linux insi
 > We recommend using the `v0` tag to minimize chances of breakage. If your
 > workflow fails due to our changes, feel free to file an issue.
 
-## Emulated system
-
-The emulated system is based on the [Buildroot 2022.11.3](https://github.com/buildroot/buildroot/tree/2022.11.3) and it runs on the RISC-V/HiFive Unleashed platform in [Renode 1.13.3](https://github.com/renode/renode).
-It contains the Linux kernel configured with some emulated devices enabled and it has the following packages installed:
-
-- Python 3.10.8
-- pip 21.2.4
-- v4l2-utils 1.22.1
-- libgpiod tools 1.6.3
-- git 2.31.7
-
 ## Parameters
 
-- `renode-run` - A command or a list of commands to run in Renode.
-- `shared-dirs` - Shared directory paths. The contents of these directories will be mounted in Renode.
-- `devices` - List of devices to add to the workflow. If not specified, the action will not install any devices.
-- `image` - url of path to tar.xz archive with compiled embedded Linux image. If not specified, the action will use the default one. See releases for examples.
-- `python-packages` - python packages from pypi library or git repository that will be sideloaded into emulated Linux.
-- `repos` - git repositories that will be sideloaded into emulated Linux.
-- `network` - Turn on the Internet in the emulated Linux? Default: true
-- `rootfs-size` - Set size of the rootfs image. Default: auto
+### Tests configurtion
 
-### Renode run
+- [`renode-run`](#running-your-commands-in-emulated-linux) - A command or a list of commands to run in Renode.
+- [`shared-dirs`](#shared-directories) - Shared directory paths. The contents of these directories will be mounted in Renode.
+- [`python-packages`](#python-packages) - Python packages from PyPI library or git repository that will be sideloaded into emulated Linux.
+- [`repos`](#git-repositories) - git repositories that will be sideloaded into emulated Linux.
+- [`fail-fast`](#fail-fast) - Fail after first non zero exit code instead of fail on the end. Default: true
 
-Running a single command using the `renode-run` parameter:
+### OS configuration
+
+- [`rootfs-size`](#rootfs-size) - Set size of the rootfs image. Default: auto
+- [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture. If not specified, the action will use the default one. See releases for examples.
+
+### Borad and devices configuration
+
+- [`network`](#network) - Turn on the Internet in the emulated Linux? Default: true
+- [`devices`](#devices) - List of devices to add to the workflow. If not specified, the action will not install any devices.
+- [`kernel`](#kernel) - URL of the path to the tar.xz archive containing the compiled embedded linux kernel + initramfs. If not specified, the action will use the default. See releases for examples.
+
+## Running your commands in emulated linux
+
+This is the simplest example of running your commands in emulated Linux. The default image will boot and log itself into a basic shell session.
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v0
   with:
-    shared-dirs: shared-dir
-    renode-run: command_to_run
-    devices: vivid
+    renode-run: uname -a
 ```
 
-Running multiple commands works the same way as the standard `run` command:
+This is the result:
+
+```raw
+# uname -a
+Linux buildroot 5.10.178 #1 SMP Thu May 11 13:44:01 UTC 2023 riscv64 GNU/Linux
+#
+```
+
+If you want to run more than one command, you can use a multiline string. For example, for this configuration:
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v0
   with:
-    shared-dirs: shared-dir
     renode-run: |
-      command_to_run_1
-      command_to_run_2
-    devices: |
-      vivid
-      gpio
+      ls /dev | grep tty | head -n 3
+      tty
 ```
 
-### Shared dirs
+the result is:
+
+```raw
+# ls /dev | grep tty | head -n 3
+tty
+tty0
+tty1
+# tty
+/dev/ttySIF0
+```
+
+Of course, you can also run shell scripts, but you have to load them into the emulated system first using the [shared directories feature](#shared-directories) or by [sideloading git repositories](#git-repositories).
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dirs: scripts
+    renode-run: sh my-script.sh
+```
+
+### Special cases
+
+If the action detects that one of your commands has failed, it will also fail with the error code that your command failed with, and no further commands will be executed. This behavior can be changed with the [`fail-fast`](#fail-fast) action parameter.
+
+### Limitations
+
+Because we wanted the system image to be very small, there is no standard `bash` shell, but a `busybox ash` shell instead. Some of your scripts may not work the same or work differently. If you really want `bash`, you can provide your own custom image. More on this [here](#image).
+
+## Examples
+
+The [release](.github/workflows/release.yml) workflow contains an example usage of this action.
+
+## Emulation
+
+The Linux emulation runs on the RISC-V/HiFive Unleashed single core platform in [Renode 1.13.3](https://github.com/renode/renode). This emulated system has some basics like 8GB of RAM and network connection configured.
+
+### Architecture
+
+Currently, the only supported architecture of the emulated system is RISC-V. You can specify the architecture with the `arch` parameter:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    arch: riscv64
+    renode-run: ...
+```
+
+We are working on `arm64` support.
+
+## Shared directories
 
 You can specify many directories that will be added to the rootfs. All files from these directories will be available in the specified target directories.
 
@@ -72,32 +124,25 @@ In the following example, files from the `project-files` directory will be extra
       shared-dir2
       project-files /opt/project
     renode-run: command_to_run
-    devices: vivid
 ```
 
-### Devices syntax
+## Devices
+
+The action allows you to add additional devices that are available in a given kernel configuration. For example, if you want to add a stub Video4Linux device you can specify:
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v0
   with:
-    devices: |
-      device1 param1 param2 param3 ...
-      device2 param1 param2 param3 ...
-      ...
+    shared-dirs: |
+      scripts
+      project-files /opt/project
+    renode-run: ./build.sh
+    devices: vivid
 ```
 
-### Available devices
+More about available devices and syntax to customize them can be found [here](docs/Devices.md).
 
-- [`vivid`](https://www.kernel.org/doc/html/latest/admin-guide/media/vivid.html) - virtual device emulating a Video4Linux device
-- [`gpio`](https://docs.kernel.org/admin-guide/gpio/gpio-mockup.html) - virtual device emulating GPIO lines. Optional parameters:
-  - left bound: GPIO line numbers will start from this number
-  - right bound: GPIO line numbers will end 1 before this number (for example, `gpio 0 64` will add 64 lines from 0 to 63)
-- [`i2c`](https://www.kernel.org/doc/html/v5.10/i2c/i2c-stub.html) - virtual device emulating `I2C` bus. Optional parameter:
-  - chip_addr: 7 bit address 0x03 to 0x77 of the chip that simulates the EEPROM device and provides read and write commands to it.
-
-Multiple devices can be specified exactly like shared directories or commands to run.
-
-### Python packages
+## Python packages
 
 This action offers sideloading Python packages that you want to use in the emulated system. You can select any package from PyPI or from a Git repository.
 
@@ -106,48 +151,39 @@ For example:
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v0
   with:
-    shared-dir: ./shared-dir
     renode-run: python --version
     python-packages: |
       git+https://github.com/antmicro/pyrav4l2.git
-      pytest
-```
-
-You can also pass the specific version requirement:
-
-```yaml
-- uses: antmicro/renode-linux-runner-action@v0
-  with:
-    shared-dir: ./shared-dir
-    renode-run: python --version
-    python-packages: |
-      git+https://github.com/antmicro/pyrav4l2.git@3c071a7
       pytest==5.3.0
-      pyyaml>=5.3.1
 ```
 
 The action will download all selected packages and their dependencies and install them later in the emulated Linux environment.
 
+You can read about the details of how the action collects dependencies and installs them [here](docs/Python-packages.md).
+
 ## Git repositories
 
-If you want to clone other Git repositories to the emulated system, you can use the `repos` argument:
+If you want to clone other Git repositories to the emulated system, you can use the `repos` argument. You can also specify the path into which you want to clone the repository:
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v0
   with:
     shared-dir: ./shared-dir
     renode-run: python --version
-    repos: https://github.com/antmicro/pyrav4l2.git
+    repos: https://github.com/antmicro/pyrav4l2.git /path/to/repo
 ```
 
-You can also specify the path into which you want to clone the repository:
+## Fail fast
+
+By default, execution of the script is aborted on the first failure and an error code is returned. When this option is disabled, the last non zero exit code is returned after all commands are executed.
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v0
   with:
-    shared-dir: ./shared-dir
-    renode-run: python --version
-    repos: https://github.com/antmicro/pyrav4l2.git folder1
+    fail-fast: false
+    renode-run:
+      gryp --version # fail gryp is not available
+      grep --version # will be executed
 ```
 
 ## Network
@@ -164,6 +200,12 @@ You can disable networking in the emulated Linux by passing the `network: false`
 
 This can be useful when running the action in a container matrix strategy if you do not have permission to create `tap` interfaces.
 
+More information about the network can be found [here](docs/Network.md).
+
+## Image
+
+If you need additional software, you can mount your own filesystem. More information on how it works can be found [here](docs/Image.md).
+
 ## Rootfs size
 
 The size of the mounted rootfs can be specified with the `rootfs-size` parameter. The parameter accepts the sizes in bytes (i.e. `1000000000`), kilobytes (i.e. `50000K`), megabytes (i.e. `512M`) or gigabytes (i.e. `1G`). The default `rootfs-size` value is `auto`; with this setting the size is calculated automatically.
@@ -176,4 +218,6 @@ The size of the mounted rootfs can be specified with the `rootfs-size` parameter
     rootfs-size: 512M
 ```
 
-The [release](.github/workflows/release.yml) workflow contains an example usage of this action.
+## Kernel
+
+It is possible to replace the Linux image on which the tests are run and mount a [filesystem image](#image). More information on how to do it can be found [here](docs/Kernel.md).

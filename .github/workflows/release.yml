@@ -19,7 +19,10 @@ jobs:
           base: ${{ github.ref_name }}
           filters: |
             build:
-              - 'br2-external/**'
+              - 'image/**'
+              - 'kernel/**'
+              - 'scripts/compile-kernel.sh'
+              - 'scripts/compile-image.sh'
 
       - name: check if release exists
         id: check-release
@@ -35,10 +38,16 @@ jobs:
           # Step outputs apparently are strings, so we have to compare against literals to avoid silly JS type coercion issues.
           echo "build=${{ steps.filter.outputs.build == 'true' || steps.check-release.outputs.build != '0' }}" >> $GITHUB_OUTPUT
 
-  build:
+  build-kernel:
     runs-on: ubuntu-latest
     needs: changes
     if: ${{ needs.changes.outputs.build == 'true' && !github.event.act }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [riscv64]
+        board: [hifive_unleashed]
+
     steps:
       - uses: actions/checkout@v3
 
@@ -48,28 +57,71 @@ jobs:
           key: ${{ github.ref }}
 
       - name: build kernel
-        run: ./scripts/compile.sh
+        run: scripts/compile-kernel.sh ${{ matrix.arch }} ${{ matrix.board }}
+
+      - name: upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          path: images/
+
+  build-image:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.build == 'true' && !github.event.act }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [riscv64]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/.buildroot-ccache
+          key: ${{ github.ref }}
+
+      - name: build images
+        run: scripts/compile-image.sh ${{ matrix.arch }} ${{ matrix.name }}
+
+      - name: upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          path: images/
+
+  send-to-releases:
+    runs-on: ubuntu-latest
+    needs: [build-kernel, build-image]
+    if: ${{ needs.changes.outputs.build == 'true' && !failure() && !github.event.act }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          path: ./
 
       - name: send to releases
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: "${{ github.token }}"
-          file: images.tar.xz
-          asset_name: images.tar.xz
           tag: ${{ github.ref_name }}
+          file: artifact/*
+          file_glob: true
           overwrite: true
 
   default-configuration-test:
     runs-on: ubuntu-latest
-    needs: build
-    if: ${{ !failure() && !github.env.act }}
+    needs: send-to-releases
+    if: ${{ !failure() && !github.event.act }}
     steps:
       - uses: actions/checkout@v3
 
       - name: test
         uses: ./
         with:
-          shared-dirs: tests 
+          shared-dirs: tests
           renode-run: |
             wget example.org
             gpiodetect
