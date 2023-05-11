@@ -1,0 +1,26 @@
+name: Quality checkers
+on: [push, workflow_dispatch, repository_dispatch, pull_request]
+
+jobs:
+  code-quality-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: get packages
+        if: ${{ env.ACT }}
+        run: |
+         sudo apt update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+         python3-pip
+
+      - name: get flake8
+        run: pip install flake8==6.0.0
+
+      - name: flake8 python code check
+        run: flake8 --extend-ignore=E501 action
+
+      - name: check for broken links
+        uses: gaurav-nelson/github-action-markdown-link-check@1.0.15
+        with:
+          use-quiet-mode: 'yes'
+          use-verbose-mode: 'yes'
