@@ -76,7 +76,7 @@ def burn_rootfs_image(user_directory: str, rootfs_size: str):
         size of the rootfs in a format used by tools like truncate or auto to be calculated automatically
     """
 
-    os_makedirs("images/rootfs")
+    os_makedirs("images/rootfs/home")
 
     with tarfile_open("images/rootfs.tar") as tar:
         tar.extractall("images/rootfs")
@@ -84,7 +84,7 @@ def burn_rootfs_image(user_directory: str, rootfs_size: str):
     for dir in shared_directories_actions:
         os_makedirs(f"images/rootfs/{dir.target}", exist_ok=True)
         copytree(
-            f"{user_directory}/{dir.host}",
+            f"{user_directory}/{dir.host}" if not dir.host.startswith('/') else dir.host,
             f"images/rootfs/{dir.target}",
             dirs_exist_ok=True
         )

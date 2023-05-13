@@ -76,7 +76,7 @@ def add_packages(packages: str):
         run_cmd(child, "#", "mkdir -p pip")
         shared_directories_actions.append(
             shared_directories_action(
-                "pip",
+                f"{os_getcwd()}/pip",
                 "/var/packages",
             )
         )
@@ -154,7 +154,7 @@ def add_repos(repos: str):
 
         shared_directories_actions.append(
             shared_directories_action(
-                "repos",
+                f"{os_getcwd()}/repos",
                 "/home",
             )
         )
