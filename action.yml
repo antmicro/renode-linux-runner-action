@@ -93,7 +93,6 @@ runs:
 
     - id: test
       run: |
-        PWD=$(pwd) \
         cd ${GITHUB_ACTION_PATH} && sudo python3 action/run-in-renode.py \
-        '${{ toJSON(inputs) }}' "$PWD"
+        '${{ toJSON(inputs) }}' "${GITHUB_WORKSPACE}"
       shell: bash
