@@ -15,8 +15,24 @@ inputs:
     description: Devices to set up
     required: false
     default: ""
+  arch:
+    despription: Processor architecture (currently only riscv64)
+    required: false
+    default: riscv64
+  board:
+    despription: Board
+    required: false
+    default: default
+  kernel:
+    description: Compiled linux image kernel + initramfs
+    required: false
+    default: ""
+  image-type:
+    desctiption: Type of the root filesystem method (currently only 'native')
+    required: false
+    default: native
   image:
-    description: Compiled linux image source
+    description: Linux root filesystem
     required: false
     default: ""
   python-packages:
@@ -34,58 +50,41 @@ inputs:
   rootfs-size:
     description: Rootfs size
     required: false
-    default: "auto"
+    default: auto
+  fail-fast:
+    description: Fail fast
+    required: false
+    default: true
 runs:
   using: composite
   steps:
 
     - id: check-required-python-version
       run: |
-        printf -v VERSIONS '%s\n%s' "$(python3 --version | awk '{ print $2 }')" "3.9"
+        printf -v VERSIONS '%s\n%s' "$(python3 --version | awk '{ print $2 }')" $PYTHON_VERSION
         if [[ "$VERSIONS" = "$(sort -V <<< "$VERSIONS")" ]]; then
-          echo "Minimum Python version required is 3.9"
+          echo "Minimum Python version required is $PYTHON_VERSION"
           exit 1
         fi
       shell: bash
+      env:
+        PYTHON_VERSION: "3.9"
 
     - id: create-working-directory
       run: |
         mkdir -p ${GITHUB_ACTION_PATH}
       shell: bash
 
-    - id: get-images
-      run: |
-        if [ -z "$IMAGE" ]; then
-          IMAGE="https://github.com/$ACTION_REPO/releases/download/$ACTION_REF/images.tar.xz"
-        fi
-        if [ -f "$IMAGE" ] && [ $(realpath "$IMAGE") == "$(realpath ${GITHUB_ACTION_PATH}/images.tar.xz)" ]; then
-          echo File already exists
-        elif [ -f "$IMAGE" ]; then
-          cp "$IMAGE" ${GITHUB_ACTION_PATH}/images.tar.xz
-        else
-          wget -q --no-verbose "$IMAGE" -O ${GITHUB_ACTION_PATH}/images.tar.xz
-        fi
-      shell: bash
-      env:
-        IMAGE: ${{ inputs.image }}
-        # https://github.com/orgs/community/discussions/49245
-        ACTION_REPO: ${{ github.action_repository || github.repository }}
-        ACTION_REF: ${{ github.action_ref || github.ref_name }}
-
-    - id: decompress
-      run: cd ${GITHUB_ACTION_PATH} && tar xf images.tar.xz
-      shell: bash
-
     - id: install-packages
       run: |
-        wget -q --no-verbose https://github.com/renode/renode/releases/download/v1.13.3/renode_1.13.3_amd64.deb && \
-        sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends                             \
-        ./renode_1.13.3_amd64.deb python3-venv
+        cd ${GITHUB_ACTION_PATH} &&                                                                                                      \
+        wget -q --no-verbose https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb && \
+        sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends                                                   \
+        ./renode_${RENODE_VERSION}_amd64.deb python3-venv &&                                                                             \
+        sudo pip3 install -r requirements.txt
       shell: bash
-
-    - id: install-pip-packages
-      run: pip3 install -r ${GITHUB_ACTION_PATH}/requirements.txt
-      shell: bash
+      env:
+        RENODE_VERSION: "1.13.3"
 
     - id: create-pip-virtual-environment
       run: cd ${GITHUB_ACTION_PATH} && mkdir -p venv-dir && python3 -m venv venv-dir
@@ -94,5 +93,9 @@ runs:
     - id: test
       run: |
         cd ${GITHUB_ACTION_PATH} && sudo python3 action/run-in-renode.py \
-        '${{ toJSON(inputs) }}' "${GITHUB_WORKSPACE}"
+        '${{ toJSON(inputs) }}' "${GITHUB_WORKSPACE}" "$ACTION_REPO" "$ACTION_REF"
       shell: bash
+      env:
+        # https://github.com/orgs/community/discussions/49245
+        ACTION_REPO: ${{ github.action_repository || github.repository }}
+        ACTION_REF: ${{ github.action_ref || github.ref_name }}

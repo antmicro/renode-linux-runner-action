@@ -11,13 +11,12 @@ jobs:
       - name: get packages
         run: |
          sudo apt update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-         python3-pip telnet iptables iproute2
+         python3-pip telnet iptables iproute2 cpio
 
       - name: test
         uses: ./
         with:
           shared-dirs: tests
-          image: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/images.tar.xz
           renode-run: |
             wget example.org
             gpiodetect
@@ -33,4 +32,3 @@ jobs:
             git+https://github.com/antmicro/pyrav4l2.git@3c071a7494b6b67263c4dddb87b47025338fd960
             git+https://github.com/antmicro/tuttest.git@c44309e0365c54759fb36864fb77bf8b347bd647
           repos: https://github.com/antmicro/pyrav4l2.git pyrav4l2
-

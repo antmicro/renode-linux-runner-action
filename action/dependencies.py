@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from common import run_cmd
-from image import shared_directories_action, shared_directories_actions
+from images import shared_directories_action, shared_directories_actions
 from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
 from sys import exit as sys_exit
 from re import compile as re_compile
@@ -29,14 +29,16 @@ default_packages = []
 downloaded_packages = []
 
 
-def get_package(child: px_spawn, package_name: str):
+def get_package(child: px_spawn, arch: str, package_name: str):
     """
-    Download selected python package for riscv64 platform.
+    Download selected python package for specified platform.
 
     Parameters
     ----------
     child: px_spawn
         pexpect spawn with shell and python virtual environment enabled
+    arch: str
+        binaries architecture
     package_name: str
         package to download
     """
@@ -44,7 +46,7 @@ def get_package(child: px_spawn, package_name: str):
     global downloaded_packages
 
     child.sendline('')
-    run_cmd(child, "(venv-dir) #", f"pip download {package_name} --platform=linux_riscv64 --no-deps --progress-bar off --disable-pip-version-check")
+    run_cmd(child, "(venv-dir) #", f"pip download {package_name} --platform=linux_{arch} --no-deps --progress-bar off --disable-pip-version-check")
     child.expect_exact('(venv-dir) #')
 
     # Removes strange ASCII control codes that appear during some 'pip download' runs.
@@ -54,12 +56,14 @@ def get_package(child: px_spawn, package_name: str):
     downloaded_packages += [file.split(' ')[1].split('/')[1] for file in output_str.splitlines() if file.startswith('Saved')]
 
 
-def add_packages(packages: str):
+def add_packages(arch: str, packages: str):
     """
     Download all selected python packages and their dependencies
-    for the riscv64 platform to sideload it later to emulated Linux.
+    for the specified architecture to sideload it later to emulated Linux.
     Parameters
     ----------
+    arch: str
+        binaries architecture
     packages: str
         raw string from github action, syntax defined in README.md
     """
@@ -95,8 +99,12 @@ def add_packages(packages: str):
             run_cmd(child, "(venv-dir) #", f"pip install -q {package} --dry-run --report report.json --progress-bar off --disable-pip-version-check")
             child.expect_exact("(venv-dir)")
 
-            with open("report.json", "r", encoding="utf-8") as report_file:
-                report = json_loads(report_file.read())
+            try:
+                with open("report.json", "r", encoding="utf-8") as report_file:
+                    report = json_loads(report_file.read())
+            except FileNotFoundError:
+                print("Could not load the report.json file, the error is most likely caused by a service outage")
+                sys_exit(1)
 
             print(f"Packages to install: {len(report['install'])}")
 
@@ -105,7 +113,7 @@ def add_packages(packages: str):
                 dependency_name = dependency["metadata"]["name"] + "==" + dependency["metadata"]["version"] \
                     if "vcs_info" not in dependency["download_info"] \
                     else "git+" + dependency["download_info"]["url"] + "@" + dependency["download_info"]["vcs_info"]["commit_id"]
-                get_package(child, dependency_name)
+                get_package(child, arch, dependency_name)
 
             child.sendline('')
 

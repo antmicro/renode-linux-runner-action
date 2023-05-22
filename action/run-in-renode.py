@@ -15,7 +15,7 @@
 from common import run_cmd, FilteredStdout
 from devices import add_devices, added_devices
 from dependencies import add_packages, add_repos, downloaded_packages
-from image import prepare_shared_directories, burn_rootfs_image
+from images import prepare_shared_directories, prepare_kernel_and_initramfs, burn_rootfs_image
 
 from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
 from subprocess import run, CalledProcessError
@@ -28,6 +28,13 @@ from time import sleep
 CR = r'\r'
 HOST_INTERFACE = "eth0"
 TAP_INTERFACE = "tap0"
+DEFAULT_IMAGE_PATH = "https://github.com/{}/releases/download/{}/image-{}-default.tar.xz"
+DEFAULT_KERNEL_PATH = "https://github.com/{}/releases/download/{}/kernel-{}-{}.tar.xz"
+
+
+default_boards = {
+    "riscv64": "hifive_unleashed"
+}
 
 
 def run_renode_in_background():
@@ -81,7 +88,7 @@ def setup_network():
         sys_exit(1)
 
 
-def setup_renode(network: bool):
+def setup_renode(board: str, network: bool):
     """
     Setups Renode instance and leaves it in the directory where the shared directory is mounted.
     It exits from the script with error code 1 if any of the commands timeouts or kernel panic is detected.
@@ -89,7 +96,9 @@ def setup_renode(network: bool):
     Parameters:
     ----------
     network: bool
-    If true it will configure network in emulated environment
+        If true it will configure network in emulated environment
+    board:
+        selected board, use to choose proper renode init script
     """
 
     run_renode_in_background()
@@ -107,20 +116,22 @@ def setup_renode(network: bool):
         # GitHub workflow log GUI interprets this sequence as newline.
         child.logfile_read = FilteredStdout(sys_stdout, CR, "")
 
-        run_cmd(child, "(monitor)", "include @action/hifive.resc")
+        run_cmd(child, "(monitor)", f"include @action/{board}/init.resc")
 
         if network:
-            run_cmd(child, "(hifive-unleashed)", "connector Connect host.tap switch0")
+            run_cmd(child, "(hifive-unleashed)", "connector Connect host.tap switch0", timeout=240)
 
-        run_cmd(child, "(hifive-unleashed)", "start")
+        run_cmd(child, "(hifive-unleashed)", "start", timeout=240)
         run_cmd(child, "(hifive-unleashed)", "uart_connect sysbus.uart0")
 
-        index = child.expect_exact(["buildroot login:", "Kernel panic"],
-                                   timeout=240)
+        index = child.expect(["buildroot login:", "Kernel panic", r"^#"], timeout=240)
+
         if index == 0:
             child.sendline("root")
         elif index == 1:
             sys_exit(1)
+        elif index == 2:
+            child.sendline('')
 
         # Adding devices
 
@@ -154,11 +165,10 @@ def setup_renode(network: bool):
         run_cmd(child, "#", "mount -o bind /dev dev/")
         run_cmd(child, "#", "mount -o bind /run run/")
         run_cmd(child, "#", "mount -o bind /tmp tmp/")
+        run_cmd(child, "#", "mkdir -p /mnt/sys/kernel/debug")
+        run_cmd(child, "#", "mount -t debugfs nodev /mnt/sys/kernel/debug")
+
         run_cmd(child, "#", "chroot /mnt /bin/sh")
-
-        run_cmd(child, "#", "mkdir -p /sys/kernel/debug")
-        run_cmd(child, "#", "mount -t debugfs nodev /sys/kernel/debug")
-
         run_cmd(child, "#", "cd /home")
 
         if len(downloaded_packages) > 0:
@@ -196,7 +206,7 @@ def setup_python(child: px_spawn):
         sys_exit(1)
 
 
-def run_cmds_in_renode(commands_to_run: str):
+def run_cmds_in_renode(commands_to_run: str, fail_fast: bool):
     """
     Runs commands specified by user in the Renode instance.
     It exits the script with error code 1 if any of the commands timeouts.
@@ -207,12 +217,14 @@ def run_cmds_in_renode(commands_to_run: str):
     commands_to_run: str
         The commands specified by the user that should be run in Renode.
         Every command must be placed as the new line of the string.
+    fail_fast: bool
+        If true, the first non-zero exit code is returned and the following commands are not executed.
+        If false, the last non-zero exit code is returned after all commands are executed.
     """
 
-    for cmd in commands_to_run.splitlines():
-        print()
-        print(f"Run in Renode: {cmd}")
+    exit_code = 0
 
+    for cmd in commands_to_run.splitlines():
         try:
             child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8")
 
@@ -228,18 +240,24 @@ def run_cmds_in_renode(commands_to_run: str):
             child.logfile_read = None
             child.sendline("echo $?")
             child.expect(r'\d+', timeout=10)
-            exit_code = int(child.match.group(0))
+            exit_code_local = int(child.match.group(0))
 
-            if exit_code != 0:
-                sys_exit(exit_code)
+            if exit_code_local != 0:
+                exit_code = exit_code_local
+                if fail_fast:
+                    sys_exit(exit_code)
 
         except px_TIMEOUT:
             print("Timeout!")
             sys_exit(1)
 
+    if not fail_fast and exit_code != 0:
+        print(f"Failed! Last exit code: {exit_code}")
+        sys_exit(exit_code)
+
 
 if __name__ == "__main__":
-    if len(sys_argv) != 3:
+    if len(sys_argv) != 5:
         print("Wrong number of arguments")
         exit(1)
 
@@ -250,15 +268,39 @@ if __name__ == "__main__":
         exit(1)
 
     user_directory = sys_argv[2]
+    action_repo = sys_argv[3]
+    action_ref = sys_argv[4]
+
+    arch = args.get("arch", "riscv64")
+    board = args.get("board", "default")
+
+    if arch not in default_boards:
+        print("Architecture not supportted!")
+        sys_exit(1)
+
+    if board == "default":
+        board = default_boards[arch]
 
     prepare_shared_directories(args.get("shared-dir", "") + '\n' + args.get("shared-dirs", ""))
     add_devices(args.get("devices", ""))
-    add_packages(args.get("python-packages", ""))
+
+    kernel = args.get("kernel", "")
+    if kernel.strip() == "":
+        kernel = DEFAULT_KERNEL_PATH.format(action_repo, action_ref, arch, board)
+
+    prepare_kernel_and_initramfs(kernel)
+
+    add_packages(arch, args.get("python-packages", ""))
     add_repos(args.get("repos", ""))
-    burn_rootfs_image(user_directory, args.get("rootfs-size", "auto"))
+
+    image = args.get("image", "")
+    if image.strip() == "":
+        image = DEFAULT_IMAGE_PATH.format(action_repo, action_ref, arch)
+
+    burn_rootfs_image(user_directory, image, args.get("rootfs-size", "auto"), args.get("image-type", "native"))
 
     renode_run = args.get("renode-run", None)
     assert renode_run, "renode-run argument is mandatory"
 
-    setup_renode(args.get("network", "true") == "true")
-    run_cmds_in_renode(renode_run)
+    setup_renode(board, args.get("network", "true") == "true")
+    run_cmds_in_renode(renode_run, args.get("fail-fast", "true") == "true")

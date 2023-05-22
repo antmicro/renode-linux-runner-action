@@ -1,0 +1,86 @@
+name: Build and test on pull request
+on: [pull_request]
+
+jobs:
+  pr-build-kernel:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.act }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [riscv64]
+        board: [hifive_unleashed]
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/.buildroot-ccache
+          key: ${{ github.ref }}
+
+      - name: build kernel
+        run: scripts/compile-kernel.sh ${{ matrix.arch }} ${{ matrix.board }}
+
+      - name: upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          path: images/
+
+  pr-build-image:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.act }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [riscv64]
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/.buildroot-ccache
+          key: ${{ github.ref }}
+
+      - name: build images
+        run: scripts/compile-image.sh ${{ matrix.arch }} ${{ matrix.name }}
+
+      - name: upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          path: images/
+
+  pr-test:
+    runs-on: ubuntu-latest
+    needs: [pr-build-kernel, pr-build-image]
+    if: ${{ !failure() && !github.event.act }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          path: ./
+
+      - name: test
+        uses: ./
+        with:
+          shared-dirs: tests
+          arch: riscv64
+          kernel: artifact/kernel-riscv64-hifive_unleashed.tar.xz
+          image: artifact/image-riscv64-default.tar.xz
+          renode-run: |
+            wget example.org
+            gpiodetect
+            sh gpio.sh
+            sh i2c.sh
+            python pyrav4l2/.github/save_examples.py pyrav4l2/README.md
+            python examples/controls-enumeration.py
+          devices: |
+            vivid
+            gpio 0 16
+            i2c 0x1C
+          python-packages: |
+            git+https://github.com/antmicro/pyrav4l2.git@3c071a7494b6b67263c4dddb87b47025338fd960
+            git+https://github.com/antmicro/tuttest.git@c44309e0365c54759fb36864fb77bf8b347bd647
+          repos: https://github.com/antmicro/pyrav4l2.git pyrav4l2

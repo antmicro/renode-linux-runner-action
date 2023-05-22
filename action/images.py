@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os import walk as os_walk, path as os_path, makedirs as os_makedirs
+from common import run_cmd, get_file
+from os import walk as os_walk, path as os_path, makedirs as os_makedirs, getcwd as os_getcwd
 from subprocess import run, DEVNULL, CalledProcessError
 from sys import exit as sys_exit
 from dataclasses import dataclass
 from tarfile import open as tarfile_open
 from shutil import copytree
+from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
 
 
 CR = r'\r'
@@ -63,22 +65,75 @@ def prepare_shared_directories(shared_directories: str):
             )
 
 
-def burn_rootfs_image(user_directory: str, rootfs_size: str):
+def prepare_kernel_and_initramfs(kernel: str):
     """
-    Creates a rootfs image to mount on the renode machine. Function copies all files specified by the user or required
-    by other functions. When creating the image fails, it exits from the script with the same error code as failing command.
+    Get the kernel package (kernel + initramfs + bootlader + firmware) and extract kernel and device tree from cpio archive.
+
+    Parameters
+    ----------
+    kernel: str
+        path or URL to the kernel package
+    """
+
+    get_file(kernel, "kernel.tar.xz")
+
+    os_makedirs("images")
+
+    with tarfile_open("kernel.tar.xz") as tar:
+        tar.extractall("images")
+
+    child = px_spawn(f'sh -c "cd {os_getcwd()};exec /bin/sh"', encoding="utf-8", timeout=10)
+
+    try:
+        child.expect_exact('#')
+        child.sendline('')
+
+        run_cmd(child, "#", "mkdir -p images/initramfs")
+        run_cmd(child, "#", "cd images/initramfs && cpio -iv < ../rootfs.cpio")
+        run_cmd(child, "#", f"cd {os_getcwd()}")
+        run_cmd(child, "#", "cp images/initramfs/boot/Image images")
+        run_cmd(child, "#", "cp images/initramfs/boot/*.dtb images")
+        run_cmd(child, "#", "rm -rf images/initramfs")
+
+        child.expect_exact('#')
+    except px_TIMEOUT:
+        sys_exit(1)
+
+
+def burn_rootfs_image(
+        user_directory: str,
+        image: str,
+        image_size: str,
+        image_type: str):
+    """
+    Get the rootfs image, copy the user-selected data to the appropriate paths and creates a rootfs image to mount on the renode machine.
+    Function copies all files specified by the user or required by other functions. When creating the image fails,
+    it exits from the script with the same error code as failing command.
 
     Parameters
     ----------
     user_directory: str
         absolute path to action user catalog
-    rootfs_size: str
+    image:
+        path or URL to the image
+    image_size: str
         size of the rootfs in a format used by tools like truncate or auto to be calculated automatically
+    image_type: str
+        type of the image supported by action native or docker
     """
+
+    if image_type == "native":
+        get_file(image, "rootfs.tar.xz")
+    elif image_type == "docker":
+        print("Docker images are not yet supported")
+        sys_exit(1)
+    else:
+        print(f"invalid image type: {image_type}")
+        sys_exit(1)
 
     os_makedirs("images/rootfs/home")
 
-    with tarfile_open("images/rootfs.tar") as tar:
+    with tarfile_open("rootfs.tar.xz") as tar:
         tar.extractall("images/rootfs")
 
     for dir in shared_directories_actions:
@@ -89,7 +144,7 @@ def burn_rootfs_image(user_directory: str, rootfs_size: str):
             dirs_exist_ok=True
         )
 
-    if rootfs_size == "auto":
+    if image_size == "auto":
         size = 0
         for path, _, files in os_walk("images/rootfs"):
             for f in files:
@@ -97,10 +152,10 @@ def burn_rootfs_image(user_directory: str, rootfs_size: str):
                 if not os_path.islink(fp):
                     size += os_path.getsize(fp)
 
-        rootfs_size = f'{max(size * 2, 5 * 10**7)}'
+        image_size = f'{max(size * 2, 5 * 10**7)}'
     try:
 
-        run(["truncate", "images/rootfs.img", "-s", rootfs_size], check=True)
+        run(["truncate", "images/rootfs.img", "-s", image_size], check=True)
         run(["mkfs.ext4", "-d", "images/rootfs", "images/rootfs.img"],
             check=True,
             stdout=DEVNULL)
