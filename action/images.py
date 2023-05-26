@@ -169,14 +169,14 @@ def burn_rootfs_image(
                     arch=arch
             )
         except StopIteration:
-            print(f"This package is not available in the selected architecture {arch}!")
+            print(f"This package is not available for the selected architecture: {arch}!")
             if arch == "riscv64":
-                print("INFO: For riscv64 architecture there are not many official docker images available yet. But very often they are available in the riscv64/distro:tag repository.")
+                print("INFO: Currently, there are not many official Docker images available for the riscv64 architecture. Alternatives can often be found under 'riscv64/image:tag'.")
             exit(1)
         except requests_HTTPError:
-            print(f"Image {library}/{image}:{tag} not exists!")
+            print(f"Image {library}/{image}:{tag} does not exist!")
             if tag == "latest":
-                print("INFO: Maybe for this image there are not default 'latest' tag.")
+                print("INFO: Perhaps there is no 'latest' tag for this image.")
             exit(1)
 
         image_proto.download(

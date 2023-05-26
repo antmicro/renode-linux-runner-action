@@ -34,7 +34,7 @@ Using the default configuration, you can enable the devices you want and run com
 - [`devices`](#devices) - List of devices to add to the workflow. If not specified, the action will not install any devices.
 - [`kernel`](#kernel) - URL of the path to the tar.xz archive containing the compiled embedded linux kernel + initramfs. If not specified, the action will use the default. See releases for examples.
 - [`arch`](#emulation) - Processor architecture
-- [`board`](#board) - Board name or `default` for architecture default, or `custom` for custom board
+- [`board`](#board) - A specific board name, or `default` for architecture default, or `custom` for a custom board
 - [`resc`](#board) - Custom Renode script
 - [`repl`](#board) - Custom Renode platform description
 
@@ -225,7 +225,7 @@ The size of the mounted rootfs can be specified with the `rootfs-size` parameter
 
 ## Kernel
 
-This action offers to replace the Linux image on which the tests are run and mount the [file system image](#image). More information on how to do it [here](docs/Kernel.md).
+It is possible to replace the Linux image on which the tests are run and mount the [file system image](#image). More information on how to do it can be found [in the 'Kernel' section of the docs](docs/Kernel.md).
 
 ## Board
 

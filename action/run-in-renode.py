@@ -54,7 +54,7 @@ def run_renode_in_background():
 
 def get_machine_name(resc: str) -> str:
     """
-    Get machine name from .resc file (used to waiting for command prompt in renode console)
+    Get machine name from .resc file (used for waiting for command prompt in the Renode console)
 
     Parameters:
     ----------
@@ -164,7 +164,7 @@ def setup_renode(board: str, network: bool):
 
     machine = get_machine_name(f"action/{board}/init.resc")
 
-    if machine is None:
+    if not machine:
         print("Machine name not found")
         sys_exit(1)
 
