@@ -22,14 +22,20 @@ from json import loads as json_loads
 
 
 # names of python packages that should be installed by default
+# they are insalled before regular packages and only if user
+# choose at least one regular package
 default_packages = ["wheel"]
+
+
+# python default packages files ready to sideload
+downloaded_default_packages = []
 
 
 # python packages files ready to sideload
 downloaded_packages = []
 
 
-def get_package(child: px_spawn, arch: str, package_name: str):
+def get_package(child: px_spawn, arch: str, package_name: str) -> list[str]:
     """
     Download selected python package for specified platform.
 
@@ -43,8 +49,6 @@ def get_package(child: px_spawn, arch: str, package_name: str):
         package to download
     """
 
-    global downloaded_packages
-
     child.sendline('')
     run_cmd(child, "(venv-dir) #", f"pip download {package_name} --platform=linux_{arch} --no-deps --progress-bar off --disable-pip-version-check")
     child.expect_exact('(venv-dir) #')
@@ -53,10 +57,10 @@ def get_package(child: px_spawn, arch: str, package_name: str):
     ansi_escape = re_compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
     output_str: str = ansi_escape.sub('', child.before)
 
-    downloaded_packages += [file.split(' ')[1].split('/')[1] for file in output_str.splitlines() if file.startswith('Saved')]
+    return [file.split(' ')[1].split('/')[1] for file in output_str.splitlines() if file.startswith('Saved')]
 
 
-def add_packages(arch: str, packages: str):
+def add_packages(arch: str, packages: str) -> None:
     """
     Download all selected python packages and their dependencies
     for the specified architecture to sideload it later to emulated Linux.
@@ -67,6 +71,9 @@ def add_packages(arch: str, packages: str):
     packages: str
         raw string from github action, syntax defined in README.md
     """
+
+    global downloaded_packages
+    global downloaded_default_packages
 
     if packages.strip() == '':
         return
@@ -91,7 +98,7 @@ def add_packages(arch: str, packages: str):
         # pip needs to be updated in venv. This workaround may be removed later.
         run_cmd(child, "(venv-dir) #", "pip -q install pip==23.0.1 --progress-bar off --disable-pip-version-check")
 
-        for package in default_packages + packages.splitlines():
+        for it, package in enumerate(default_packages + packages.splitlines()):
 
             print(f"processing: {package}")
 
@@ -113,13 +120,16 @@ def add_packages(arch: str, packages: str):
                 dependency_name = dependency["metadata"]["name"] + "==" + dependency["metadata"]["version"] \
                     if "vcs_info" not in dependency["download_info"] \
                     else "git+" + dependency["download_info"]["url"] + "@" + dependency["download_info"]["vcs_info"]["commit_id"]
-                get_package(child, arch, dependency_name)
+                if it < len(default_packages):
+                    downloaded_default_packages += get_package(child, arch, dependency_name)
+                else:
+                    downloaded_packages += get_package(child, arch, dependency_name)
 
             child.sendline('')
 
         run_cmd(child, "(venv-dir) #", "deactivate")
 
-        for package in downloaded_packages:
+        for package in downloaded_default_packages + downloaded_packages:
             run_cmd(child, "#", f"mv {package} pip")
 
         child.expect_exact("#")

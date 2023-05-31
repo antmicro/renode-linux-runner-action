@@ -14,7 +14,7 @@
 
 from common import run_cmd, FilteredStdout, get_file
 from devices import add_devices, added_devices
-from dependencies import add_packages, add_repos, downloaded_packages
+from dependencies import add_packages, add_repos, downloaded_packages, downloaded_default_packages
 from images import prepare_shared_directories, prepare_kernel_and_initramfs, burn_rootfs_image
 
 from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
@@ -260,8 +260,8 @@ def setup_python(child: px_spawn):
         run_cmd(child, "#", 'echo "[global]" >> $HOME/.config/pip/pip.conf')
         run_cmd(child, "#", 'echo "disable-pip-version-check = True" >> $HOME/.config/pip/pip.conf')
 
-        for package in downloaded_packages:
-            run_cmd(child, "#", f"pip install /var/packages/{package} --no-index --no-deps --no-build-isolation --root-user-action=ignore", timeout=3600)
+        run_cmd(child, "#", f"pip install {' '.join([f'/var/packages/{package}' for package in downloaded_default_packages])} --no-index --no-deps --no-build-isolation --root-user-action=ignore")
+        run_cmd(child, "#", f"pip install {' '.join([f'/var/packages/{package}' for package in downloaded_packages])} --no-index --no-deps --no-build-isolation --root-user-action=ignore", timeout=3600)
 
         run_cmd(child, "#", "rm -r /var/packages", timeout=3600)
     except px_TIMEOUT:
