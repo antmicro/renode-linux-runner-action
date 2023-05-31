@@ -1,0 +1,12 @@
+name: renode_config
+dependencies: [renode_network]
+refers: renode
+echo: true
+timeout: 10
+fail_fast: true
+sleep: 2
+commands:
+  - "include @action/device/${{BOARD}}/init.resc"
+  - "connector Connect sysbus.uart0 term"
+  - "connector Connect host.tap switch0"
+  - "start"

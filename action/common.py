@@ -52,8 +52,8 @@ def error(msg: str):
     Print message and exit with error code 1
 
     Parameters
-        ----------
-        msg : message to print
+    ----------
+    msg : message to print
     """
     print(msg)
     sys.exit(1)

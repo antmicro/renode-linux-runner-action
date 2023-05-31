@@ -14,6 +14,7 @@
 
 from common import run_cmd, error
 from images import shared_directories_action, shared_directories_actions
+from command import Section
 
 import os
 import re
@@ -173,3 +174,32 @@ def add_repos(repos: str):
                 "/home",
             )
         )
+
+
+def add_python_setup() -> Section:
+
+    if len(downloaded_packages) == 0:
+        return None
+
+    commands = [
+        # pip configuration
+        # Disable pip version checking. Pip runs very slowly in Renode without this setting.
+        "mkdir -p $HOME/.config/pip",
+        "echo [global] >> $HOME/.config/pip/pip.conf",
+        "echo disable-pip-version-check = True >> $HOME/.config/pip/pip.conf",
+        f"pip install {' '.join([f'/var/packages/{package}' for package in downloaded_default_packages])} "
+        "--no-index --no-deps --no-build-isolation "
+        "--root-user-action=ignore",
+        f"pip install {' '.join([f'/var/packages/{package}' for package in downloaded_packages])} "
+        "--no-index --no-deps --no-build-isolation "
+        "--root-user-action=ignore",
+        "rm -r /var/packages",
+    ]
+
+    return Section.form_multiline_string("python", string="\n".join(commands), config={
+        "timeout": 3600,
+        "refers": "target",
+        "dependencies": ["chroot"],
+        "echo": True,
+        "fail_fast": False,
+    })

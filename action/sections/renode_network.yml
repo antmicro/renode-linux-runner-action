@@ -1,0 +1,11 @@
+name: renode_network
+dependencies: []
+refers: renode
+echo: true
+timeout: 10
+fail_fast: true
+sleep: 1
+commands:
+  - "emulation CreateTap \"${{TAP_INTERFACE}}\" \"tap\""
+vars:
+  TAP_INTERFACE: tap0

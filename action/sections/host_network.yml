@@ -1,0 +1,18 @@
+# This configuration allows simulated Linux to connect to the Internet.
+# Linux in Renode has the static IP 172.16.0.2/16.
+
+name: host_network
+dependencies: [renode_network]
+refers: host
+echo: true
+timeout: 10
+fail_fast: true
+commands:
+  - "ip addr add 172.16.0.1/16 dev ${{TAP_INTERFACE}}"
+  - "ip link set up dev ${{TAP_INTERFACE}}"
+  - "iptables -A FORWARD -i ${{TAP_INTERFACE}} -o ${{HOST_INTERFACE}} -j ACCEPT"
+  - "iptables -A FORWARD -i ${{HOST_INTERFACE}} -o ${{TAP_INTERFACE}} -m state --state RELATED,ESTABLISHED -j ACCEPT"
+  - "iptables -t nat -A POSTROUTING -o ${{HOST_INTERFACE}} -j MASQUERADE"
+vars:
+  TAP_INTERFACE: tap0
+  HOST_INTERFACE: eth0

@@ -1,0 +1,14 @@
+# Network configuration
+# This configuration allows simulated linux to connect to
+# the tap0 interface created in the host
+
+name: target_network
+dependencies: [host_network]
+refers: target
+echo: true
+timeout: 5
+fail_fast: true
+commands:
+  - "ip addr add 172.16.0.2/16 dev eth0"
+  - "ip route add default via 172.16.0.1"
+  - "echo \"nameserver 1.1.1.1\" >> /etc/resolv.conf" # adds dns server address

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from command import Section, Command
+
 from typing import Protocol, Any
 from dataclasses import dataclass
 from string import hexdigits
@@ -150,7 +152,7 @@ available_devices = {
 added_devices: list[Device] = []
 
 
-def add_devices(devices: str):
+def add_devices(devices: str) -> Section:
     """
     Parses arguments and commands, and adds devices to the
     `available devices` list
@@ -203,3 +205,11 @@ def add_devices(devices: str):
                 added_devices.append(new_device)
         else:
             print(f"WARNING: Device {device_name} not found")
+
+    return Section(
+        "device",
+        dependencies=[],
+        refers="target",
+        echo=True,
+        commands=[Command(command=[command]) for commands in added_devices for command in commands.add_commands]
+    )
