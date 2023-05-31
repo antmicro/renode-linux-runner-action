@@ -40,25 +40,17 @@ shared_directories_actions: list[shared_directories_action] = []
 
 def docker_image_parse(image: str) -> tuple[str]:
 
-    class LoopMatch(object):
-        def __init__(self, image_string: str):
-            self.image_string = image_string
+    result = re_match(r"^(.*)\/(.*):(.*)$", image)
+    if result:
+        return (result.group(1), result.group(2), result.group(3))
 
-        def __getitem__(self, nr: int):
-            return self.result.group(nr)
+    result = re_match(r"^(.*)\/(.*)$", image)
+    if result:
+        return (result.group(1), result.group(2), "latest")
 
-        def match(self, regexp: str) -> bool:
-            self.result = re_match(regexp, self.image_string)
-            return self.result is not None
-
-    tp = LoopMatch(image)  # try pattern
-
-    if tp.match(r"^(.*)\/(.*):(.*)$"):
-        return (tp[1], tp[2], tp[3])
-    if tp.match(r"^(.*)\/(.*)$"):
-        return (tp[1], tp[2], "latest")
-    if tp.match(r"^(.*):(.*)$"):
-        return ("library", tp[1], tp[2])
+    result = re_match(r"^(.*):(.*)$", image)
+    if result:
+        return ("library", result.group(1), result.group(2))
 
     return ("library", image, "latest")
 
