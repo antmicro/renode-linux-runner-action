@@ -20,6 +20,10 @@ from dataclasses import dataclass
 from tarfile import open as tarfile_open
 from shutil import copytree
 from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
+from re import match as re_match
+from requests import HTTPError as requests_HTTPError
+from dockersave import Image as DockersaveImage
+from json import loads as json_loads
 
 
 CR = r'\r'
@@ -32,6 +36,23 @@ class shared_directories_action:
 
 
 shared_directories_actions: list[shared_directories_action] = []
+
+
+def docker_image_parse(image: str) -> tuple[str]:
+
+    result = re_match(r"^(.*)\/(.*):(.*)$", image)
+    if result:
+        return (result.group(1), result.group(2), result.group(3))
+
+    result = re_match(r"^(.*)\/(.*)$", image)
+    if result:
+        return (result.group(1), result.group(2), "latest")
+
+    result = re_match(r"^(.*):(.*)$", image)
+    if result:
+        return ("library", result.group(1), result.group(2))
+
+    return ("library", image, "latest")
 
 
 def prepare_shared_directories(shared_directories: str):
@@ -103,6 +124,7 @@ def prepare_kernel_and_initramfs(kernel: str):
 def burn_rootfs_image(
         user_directory: str,
         image: str,
+        arch: str,
         image_size: str,
         image_type: str):
     """
@@ -122,18 +144,54 @@ def burn_rootfs_image(
         type of the image supported by action native or docker
     """
 
-    if image_type == "native":
-        get_file(image, "rootfs.tar.xz")
-    elif image_type == "docker":
-        print("Docker images are not yet supported")
-        sys_exit(1)
-    else:
-        print(f"invalid image type: {image_type}")
-        sys_exit(1)
-
     os_makedirs("images/rootfs/home")
 
-    with tarfile_open("rootfs.tar.xz") as tar:
+    if image_type == "native":
+        get_file(image, "rootfs.tar.xz")
+        image = "rootfs.tar.xz"
+    elif image_type == "docker":
+        library, image, tag = docker_image_parse(image)
+
+        print("Preparing your docker image...")
+
+        try:
+            image_proto = DockersaveImage(
+                    image=f"{library}/{image}",
+                    tag=tag,
+                    arch=arch
+            )
+        except StopIteration:
+            print(f"This package is not available for the selected architecture: {arch}!")
+            if arch == "riscv64":
+                print("INFO: Currently, there are not many official Docker images available for the riscv64 architecture. Alternatives can often be found under 'riscv64/image:tag'.")
+            exit(1)
+        except requests_HTTPError:
+            print(f"Image {library}/{image}:{tag} does not exist!")
+            if tag == "latest":
+                print("INFO: Perhaps there is no 'latest' tag for this image.")
+            exit(1)
+
+        image_proto.download(
+            path=f"{os_getcwd()}/images",
+            tar=True,
+            rm=True,
+            tarname="docker-image.tar"
+        )
+
+        with tarfile_open("images/docker-image.tar") as tar:
+            tar.extractall("images/docker-image")
+
+        with open('images/docker-image/manifest.json') as manifest_f:
+            manifest = json_loads(manifest_f.read())
+
+        selected_layer = manifest[0]['Layers'][0]
+
+        image = f"images/docker-image/{selected_layer}"
+    else:
+        print(f"image type: {image_type} not found")
+        sys_exit(1)
+
+    with tarfile_open(image) as tar:
         tar.extractall("images/rootfs")
 
     for dir in shared_directories_actions:

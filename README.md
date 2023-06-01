@@ -25,13 +25,18 @@ Using the default configuration, you can enable the devices you want and run com
 ### OS configuration
 
 - [`rootfs-size`](#rootfs-size) - Set size of the rootfs image. Default: auto
-- [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture. If not specified, the action will use the default one. See releases for examples.
+- [`image-type`](#image) - native or docker. Read about the differences in the [image section](#image)
+- [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture or docker image identifier. If not specified, the action will use the default one. See releases for examples.
 
 ### Borad and devices configuration
 
 - [`network`](#network) - Turn on the Internet in the emulated Linux? Default: true
 - [`devices`](#devices) - List of devices to add to the workflow. If not specified, the action will not install any devices.
 - [`kernel`](#kernel) - URL of the path to the tar.xz archive containing the compiled embedded linux kernel + initramfs. If not specified, the action will use the default. See releases for examples.
+- [`arch`](#emulation) - Processor architecture
+- [`board`](#board) - A specific board name, or `default` for architecture default, or `custom` for a custom board
+- [`resc`](#board) - Custom Renode script
+- [`repl`](#board) - Custom Renode platform description
 
 ## Running your commands in emulated linux
 
@@ -220,4 +225,12 @@ The size of the mounted rootfs can be specified with the `rootfs-size` parameter
 
 ## Kernel
 
-It is possible to replace the Linux image on which the tests are run and mount a [filesystem image](#image). More information on how to do it can be found [here](docs/Kernel.md).
+It is possible to replace the Linux image on which the tests are run and mount the [file system image](#image). More information on how to do it can be found [in the 'Kernel' section of the docs](docs/Kernel.md).
+
+## Board
+
+The action allows you to select your own board and choose its configuration. You can select a board from the list (remember that you also need to select the matching processor architecture). Here are the available boards:
+
+- [riscv64 - hifive_unleashed](action/hifive_unleashed/init.resc)
+
+You can also choose the default board: `default` or your own board: `custom`. In the latter case, you have to provide your own resc and repl files, which will conigure the emulation. Configuration files can be selected using [`resc`](https://renode.readthedocs.io/en/latest/introduction/using.html#resc-scripts) and [`repl`](https://renode.readthedocs.io/en/latest/advanced/platform_description_format.html) parameters. You can read more about these files in the [Renode documentation](https://renode.readthedocs.io/en/latest/index.html).

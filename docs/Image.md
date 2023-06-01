@@ -7,7 +7,7 @@ This section details how to work with `image` packages that are compatible with 
 There are two types of images that are compatible with this action:
 
 * native: all files are placed in the `.tar.xz` archive
-* docker: docker container (not yet supported)
+* docker: docker container
 
 ### Native images
 
@@ -15,7 +15,19 @@ A native image is just an archive with a full Linux rootfs. You can add any file
 
 ### Docker images
 
-Work in progress...
+The `docker` image type is a standard Docker image. The action will repack the latest layer into the standard .tar.xz archive and everything will continue as in the native image. The Docker images are downloaded from DockerHub. This is an example of using the `docker` image type:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    arch: riscv64
+    image-type: docker
+    image: riscv64/debian:experimental
+    renode-run: |
+      ls /dev | grep video
+      bash bash_test.sh
+    devices: vivid
+```
 
 ## Default images available
 
