@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common import run_cmd
+from common import run_cmd, error
 from images import shared_directories_action, shared_directories_actions
-from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
-from sys import exit as sys_exit
-from re import compile as re_compile
-from os import getcwd as os_getcwd, mkdir as os_mkdir
-from json import loads as json_loads
+
+import os
+import re
+import json
+import pexpect as px
 
 
 # names of python packages that should be installed by default
@@ -35,7 +35,7 @@ downloaded_default_packages = []
 downloaded_packages = []
 
 
-def get_package(child: px_spawn, arch: str, package_name: str) -> list[str]:
+def get_package(child: px.spawn, arch: str, package_name: str) -> list[str]:
     """
     Download selected python package for specified platform.
 
@@ -54,7 +54,7 @@ def get_package(child: px_spawn, arch: str, package_name: str) -> list[str]:
     child.expect_exact('(venv-dir) #')
 
     # Removes strange ASCII control codes that appear during some 'pip download' runs.
-    ansi_escape = re_compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
+    ansi_escape = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
     output_str: str = ansi_escape.sub('', child.before)
 
     return [file.split(' ')[1].split('/')[1] for file in output_str.splitlines() if file.startswith('Saved')]
@@ -78,7 +78,7 @@ def add_packages(arch: str, packages: str) -> None:
     if packages.strip() == '':
         return
 
-    child = px_spawn(f'sh -c "cd {os_getcwd()};exec /bin/sh"', encoding="utf-8", timeout=60)
+    child = px.spawn(f'sh -c "cd {os.getcwd()};exec /bin/sh"', encoding="utf-8", timeout=60)
 
     try:
         child.expect_exact('#')
@@ -87,7 +87,7 @@ def add_packages(arch: str, packages: str) -> None:
         run_cmd(child, "#", "mkdir -p pip")
         shared_directories_actions.append(
             shared_directories_action(
-                f"{os_getcwd()}/pip",
+                f"{os.getcwd()}/pip",
                 "/var/packages",
             )
         )
@@ -108,10 +108,9 @@ def add_packages(arch: str, packages: str) -> None:
 
             try:
                 with open("report.json", "r", encoding="utf-8") as report_file:
-                    report = json_loads(report_file.read())
+                    report = json.loads(report_file.read())
             except FileNotFoundError:
-                print("Could not load the report.json file, the error is most likely caused by a service outage")
-                sys_exit(1)
+                error("Could not load the report.json file, the error is most likely caused by a service outage")
 
             print(f"Packages to install: {len(report['install'])}")
 
@@ -133,9 +132,8 @@ def add_packages(arch: str, packages: str) -> None:
             run_cmd(child, "#", f"mv {package} pip")
 
         child.expect_exact("#")
-    except px_TIMEOUT:
-        print("Timeout!")
-        sys_exit(1)
+    except px.TIMEOUT:
+        error("Timeout!")
 
 
 def add_repos(repos: str):
@@ -148,7 +146,7 @@ def add_repos(repos: str):
         raw string from github action, syntax defined in README.md
     """
 
-    os_mkdir("repos")
+    os.mkdir("repos")
 
     for repo in repos.splitlines():
 
@@ -157,7 +155,7 @@ def add_repos(repos: str):
 
         print(f'Cloning {repo}' + f' to {folder}' if folder != '' else '')
 
-        child = px_spawn(f'sh -c "cd {os_getcwd()};exec /bin/sh"', encoding="utf-8", timeout=10)
+        child = px.spawn(f'sh -c "cd {os.getcwd()};exec /bin/sh"', encoding="utf-8", timeout=10)
 
         try:
             child.expect_exact('#')
@@ -166,13 +164,12 @@ def add_repos(repos: str):
             run_cmd(child, "#", f"git clone {repo} repos/{folder}")
 
             child.expect_exact('#', timeout=3600)
-        except px_TIMEOUT:
-            print("Timeout!")
-            sys_exit(1)
+        except px.TIMEOUT:
+            error("Timeout!")
 
         shared_directories_actions.append(
             shared_directories_action(
-                f"{os_getcwd()}/repos",
+                f"{os.getcwd()}/repos",
                 "/home",
             )
         )

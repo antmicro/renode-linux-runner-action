@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common import run_cmd, get_file
-from os import walk as os_walk, path as os_path, makedirs as os_makedirs, getcwd as os_getcwd
+from common import run_cmd, get_file, error
+
 from subprocess import run, DEVNULL, CalledProcessError
-from sys import exit as sys_exit
 from dataclasses import dataclass
-from tarfile import open as tarfile_open
-from shutil import copytree
-from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
-from re import match as re_match
-from requests import HTTPError as requests_HTTPError
-from dockersave import Image as DockersaveImage
-from json import loads as json_loads
+
+import os
+import re
+import sys
+import json
+import shutil
+import tarfile
+import requests
+import dockersave
+import pexpect as px
 
 
 CR = r'\r'
@@ -40,15 +42,15 @@ shared_directories_actions: list[shared_directories_action] = []
 
 def docker_image_parse(image: str) -> tuple[str]:
 
-    result = re_match(r"^(.*)\/(.*):(.*)$", image)
+    result = re.match(r"^(.*)\/(.*):(.*)$", image)
     if result:
         return (result.group(1), result.group(2), result.group(3))
 
-    result = re_match(r"^(.*)\/(.*)$", image)
+    result = re.match(r"^(.*)\/(.*)$", image)
     if result:
         return (result.group(1), result.group(2), "latest")
 
-    result = re_match(r"^(.*):(.*)$", image)
+    result = re.match(r"^(.*):(.*)$", image)
     if result:
         return ("library", result.group(1), result.group(2))
 
@@ -98,12 +100,12 @@ def prepare_kernel_and_initramfs(kernel: str):
 
     get_file(kernel, "kernel.tar.xz")
 
-    os_makedirs("images")
+    os.makedirs("images")
 
-    with tarfile_open("kernel.tar.xz") as tar:
+    with tarfile.open("kernel.tar.xz") as tar:
         tar.extractall("images")
 
-    child = px_spawn(f'sh -c "cd {os_getcwd()};exec /bin/sh"', encoding="utf-8", timeout=10)
+    child = px.spawn(f'sh -c "cd {os.getcwd()};exec /bin/sh"', encoding="utf-8", timeout=10)
 
     try:
         child.expect_exact('#')
@@ -111,14 +113,14 @@ def prepare_kernel_and_initramfs(kernel: str):
 
         run_cmd(child, "#", "mkdir -p images/initramfs")
         run_cmd(child, "#", "cd images/initramfs && cpio -iv < ../rootfs.cpio")
-        run_cmd(child, "#", f"cd {os_getcwd()}")
+        run_cmd(child, "#", f"cd {os.getcwd()}")
         run_cmd(child, "#", "cp images/initramfs/boot/Image images")
         run_cmd(child, "#", "cp images/initramfs/boot/*.dtb images")
         run_cmd(child, "#", "rm -rf images/initramfs")
 
         child.expect_exact('#')
-    except px_TIMEOUT:
-        sys_exit(1)
+    except px.TIMEOUT:
+        error("Timeout!")
 
 
 def burn_rootfs_image(
@@ -144,7 +146,7 @@ def burn_rootfs_image(
         type of the image supported by action native or docker
     """
 
-    os_makedirs("images/rootfs/home", exist_ok=True)
+    os.makedirs("images/rootfs/home", exist_ok=True)
 
     if image_type == "native":
         get_file(image, "rootfs.tar.xz")
@@ -155,7 +157,7 @@ def burn_rootfs_image(
         print("Preparing your docker image...")
 
         try:
-            image_proto = DockersaveImage(
+            image_proto = dockersave.Image(
                     image=f"{library}/{image}",
                     tag=tag,
                     arch=arch
@@ -165,38 +167,37 @@ def burn_rootfs_image(
             if arch == "riscv64":
                 print("INFO: Currently, there are not many official Docker images available for the riscv64 architecture. Alternatives can often be found under 'riscv64/image:tag'.")
             exit(1)
-        except requests_HTTPError:
+        except requests.HTTPError:
             print(f"Image {library}/{image}:{tag} does not exist!")
             if tag == "latest":
                 print("INFO: Perhaps there is no 'latest' tag for this image.")
             exit(1)
 
         image_proto.download(
-            path=f"{os_getcwd()}/images",
+            path=f"{os.getcwd()}/images",
             tar=True,
             rm=True,
             tarname="docker-image.tar"
         )
 
-        with tarfile_open("images/docker-image.tar") as tar:
+        with tarfile.open("images/docker-image.tar") as tar:
             tar.extractall("images/docker-image")
 
         with open('images/docker-image/manifest.json') as manifest_f:
-            manifest = json_loads(manifest_f.read())
+            manifest = json.loads(manifest_f.read())
 
         selected_layer = manifest[0]['Layers'][0]
 
         image = f"images/docker-image/{selected_layer}"
     else:
-        print(f"image type: {image_type} not found")
-        sys_exit(1)
+        error(f"image type: {image_type} not found")
 
-    with tarfile_open(image) as tar:
+    with tarfile.open(image) as tar:
         tar.extractall("images/rootfs")
 
     for dir in shared_directories_actions:
-        os_makedirs(f"images/rootfs/{dir.target}", exist_ok=True)
-        copytree(
+        os.makedirs(f"images/rootfs/{dir.target}", exist_ok=True)
+        shutil.copytree(
             f"{user_directory}/{dir.host}" if not dir.host.startswith('/') else dir.host,
             f"images/rootfs/{dir.target}",
             dirs_exist_ok=True
@@ -204,11 +205,11 @@ def burn_rootfs_image(
 
     if image_size == "auto":
         size = 0
-        for path, _, files in os_walk("images/rootfs"):
+        for path, _, files in os.walk("images/rootfs"):
             for f in files:
-                fp = os_path.join(path, f)
-                if not os_path.islink(fp):
-                    size += os_path.getsize(fp)
+                fp = os.path.join(path, f)
+                if not os.path.islink(fp):
+                    size += os.path.getsize(fp)
 
         image_size = f'{max(size * 2, 5 * 10**7)}'
     try:
@@ -218,4 +219,4 @@ def burn_rootfs_image(
             check=True,
             stdout=DEVNULL)
     except CalledProcessError as e:
-        sys_exit(e.returncode)
+        sys.exit(e.returncode)
