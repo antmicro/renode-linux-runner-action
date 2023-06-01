@@ -7,6 +7,10 @@ inputs:
     description: Command or a list of commands to run in Renode
     required: false
     default: ""
+  renode-run-yaml:
+    description: Command or a list of commands to run in Renode, but in a form of yaml file
+    required: false
+    default: ""
   shared-dirs:
     description: Paths to shared directories
     required: false
@@ -67,6 +71,10 @@ inputs:
     description: Fail fast
     required: false
     default: true
+  sections:
+    description: Add your section to existing configuration
+    required: false
+    default: ""
 
 
 runs:

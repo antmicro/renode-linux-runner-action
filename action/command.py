@@ -99,7 +99,7 @@ class Section:
         for command in self.commands:
             command.apply_vars(dict(self.vars, **default_vars))
 
-    def load_from_yaml(yaml_string: str):
+    def load_from_yaml(yaml_string: str, additional_settings: Dict[str, Any] = {}):
         """
         Construct the section from yaml.
 
@@ -108,7 +108,8 @@ class Section:
         yaml_string : string with yaml
         """
 
-        obj: Dict = yaml.safe_load(yaml_string)
+        obj: Dict[str, Any] = yaml.safe_load(yaml_string)
+        obj.update(additional_settings)
 
         if "name" not in obj.keys():
             error("section description file must have at least 'name' field")
@@ -305,22 +306,23 @@ class Interpreter:
 
     def _load_sections(self) -> None:
         """
-        Loads sections from yaml files stored in action/sections catalog and add them to `sections` dict
+        Loads sections from yaml files stored in action/sections and action/user_section catalog and add them to `sections` dict
 
         Parameters
         ----------
         vars: global variables
         """
 
-        for path, _, files in os.walk("action/sections"):
-            for f in files:
-                fp = os.path.join(path, f)
-                if fp.endswith((".yml", ".yaml")):
-                    print(f"Loading {fp}")
-                    with open(fp) as section_file:
-                        sec = Section.load_from_yaml(section_file.read())
-                        sec.apply_vars(self.default_vars)
-                        self.add_section(sec)
+        for catalog in ["sections", "user_sections"]:
+            for path, _, files in os.walk(f"action/{catalog}"):
+                for f in files:
+                    fp = os.path.join(path, f)
+                    if fp.endswith((".yml", ".yaml")):
+                        print(f"Loading {fp}")
+                        with open(fp) as section_file:
+                            sec = Section.load_from_yaml(section_file.read())
+                            sec.apply_vars(self.default_vars)
+                            self.add_section(sec)
 
     def _sort_sections(self) -> None:
         """

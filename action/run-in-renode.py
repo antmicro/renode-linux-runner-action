@@ -112,6 +112,9 @@ if __name__ == "__main__":
         args.get("image-type", "native")
     )
 
+    for it, custom_section in enumerate(args.get("sections", "").splitlines()):
+        get_file(custom_section, f"action/user_sections/section{it}.yml")
+
     interpreter = Interpreter({
         "NOW": str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
         "BOARD": board
@@ -120,14 +123,23 @@ if __name__ == "__main__":
     interpreter.add_section(add_devices(args.get("devices", "")))
     interpreter.add_section(add_python_setup())
 
+    if args.get("network", "true") != "true":
+        for i in ["host", "renode", "target"]:
+            interpreter.delete_section(f"{i}_network")
+
     interpreter.add_section(Section.form_multiline_string("action_test", args.get("renode-run", ""), config={
         "echo": True,
         "refers": "target",
         "dependencies": ["python", "chroot"],
     }))
 
-    if args.get("network", "true") != "true":
-        for i in ["host", "renode", "target"]:
-            interpreter.delete_section(f"{i}_network")
+    renode_run_yaml: str = args.get("renode-run-yaml", "")
+
+    if renode_run_yaml.strip() != "":
+        interpreter.add_section(Section.load_from_yaml(renode_run_yaml, additional_settings={
+            "name": "action_test",
+            "refers": "target",
+            "dependencies": ["python", "chroot"],
+        }))
 
     interpreter.evaluate()

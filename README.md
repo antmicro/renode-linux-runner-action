@@ -17,6 +17,7 @@ Using the default configuration, you can enable the devices you want and run com
 ### Tests configurtion
 
 - [`renode-run`](#running-your-commands-in-emulated-linux) - A command or a list of commands to run in Renode.
+- [`renode-run-yaml`](#running-your-commands-in-emulated-linux) - A command or a list of commands to run in Renode, but written in yaml in [section format](#sections)
 - [`shared-dirs`](#shared-directories) - Shared directory paths. The contents of these directories will be mounted in Renode.
 - [`python-packages`](#python-packages) - Python packages from PyPI library or git repository that will be sideloaded into emulated Linux.
 - [`repos`](#git-repositories) - git repositories that will be sideloaded into emulated Linux.
@@ -27,6 +28,7 @@ Using the default configuration, you can enable the devices you want and run com
 - [`rootfs-size`](#rootfs-size) - Set size of the rootfs image. Default: auto
 - [`image-type`](#image) - native or docker. Read about the differences in the [image section](#image)
 - [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture or docker image identifier. If not specified, the action will use the default one. See releases for examples.
+- [`sections`](#sections) - In case your modified system require to modify default initialization in renode or target system you can replace our commands by apply your own sections.
 
 ### Borad and devices configuration
 
@@ -222,6 +224,83 @@ The size of the mounted rootfs can be specified with the `rootfs-size` parameter
     renode-run: python --version
     rootfs-size: 512M
 ```
+
+## Sections
+
+Sometimes, after replacing the initramfs or board configuration, you may need to change the default commands, that action are executed on each run. You can use the 'Section' mechanism. All the commands that the action executes are stored in the section files in `action/sections/*.yml`. If you want to change one of these, you can pass your own section through the `sections` action argument. If your section has the same name, it will replace the default one.
+
+For example:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dir: shared-dir
+    renode-run: |
+      command1
+      command2
+    sections: |
+      path/to/section/1
+      https://section2/
+```
+
+### Section syntax
+
+Section file is a standard yaml file and you can configure fileds:
+
+- `name`: the only mandatory field, it is used to resolve dependencies
+- `dependencies`: the array of sections that must be executed before this section. If your section depends on the non-existent section, that dependency will be ignored. This list is empty by default.
+- `refers`: the name of the terminal to which the commands refers to. The action has three open terminals (host, target, renode).
+- `echo`: Boolean parameter. If true, the output from terminal will be printed. Default: false
+- `timeout`: Default timeout for the each command. Commands can override this setting. Default: null, so no timeout for your commands.
+- `fail_fast`: Boolean parameter. If true, the action will return the error after the first failed command. Otherwise, the action will fail at the end of the section. Default: true
+- `sleep`: The action will wait for `sleep` seconds before proceeding to the next section. Defaut: 0
+- `command`: List of string or Command objects to execute. Default: empty
+- `vars`: Dictionary of variables. [Read more about it here](#vars). Default: empty
+
+For example:
+
+```yaml
+name: section1
+dependencies: [renode_config]
+refers: target
+echo: true
+timeout: 5
+fail_fast: true
+commands:
+  - waitfor:
+    - "buildroot login:"
+    timeout: null
+    check_exit_code: False
+  - "root"
+  - "dmesg -n 1"
+  - "date -s \"${{NOW}}\""
+  - "echo ${{VAR1}}"
+vars:
+  VAR1: "hello, world!"
+```
+
+### Command syntax
+
+Creating list of commands you just can use a list of string, but if you want to customize commands you can use Command object:
+
+Command object has fields:
+
+- `command`: A list of strings. The command will be selected from the list whose index was equal to the index in the expected list of the previous command. This allows you to react in different ways to different command results.
+- waitfor`: A list of strings. The action will wait for one of the strings and pass its index to the next command.
+- `timeout`: Timeout for the command. This overrides the default command in the section. By default, the timeout is inherited from the section.
+- `echo`: Boolean parameter. If true, the output from the terminal is printed. By default this parameter is inherited from the section.
+- `check_exit_code`: Boolean parameter. If true, the terminal will check whether the command failed or not. Default: true
+
+### Vars
+
+You can define the list of variables and use it later with `${{VAR_NAME}}`. In addition, the action has global variables:
+
+- `${{BOARD}}`: selected board name
+- `${{NOW}}`: current time in a format `%Y-%m-%d %H:%M:%S`
+
+### Miscellaneous
+
+All sections that refer to a particular terminal have a hidden additional dependency. They depend on the section that has the same name as terminal (for example, renode). These sections are used to configure the terminal. However, you can replace one of them by simply using it's name in your section.
 
 ## Kernel
 
