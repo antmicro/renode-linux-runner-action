@@ -100,10 +100,10 @@ def configure_board(arch: str, board: str, resc: str, repl: str):
         sys.exit(1)
 
     if resc != "default":
-        get_file(resc, f"action/{board}/init.resc")
+        get_file(resc, f"action/device/{board}/init.resc")
 
     if repl != "default":
-        get_file(repl, f"action/{board}/platform.repl")
+        get_file(repl, f"action/device/{board}/platform.repl")
 
     return (arch, board)
 
@@ -162,7 +162,7 @@ def setup_renode(board: str, network: bool):
     if network:
         setup_network()
 
-    machine = get_machine_name(f"action/{board}/init.resc")
+    machine = get_machine_name(f"action/device/{board}/init.resc")
 
     if not machine:
         error("Machine name not found")
@@ -177,7 +177,7 @@ def setup_renode(board: str, network: bool):
         # GitHub workflow log GUI interprets this sequence as newline.
         child.logfile_read = FilteredStdout(sys.stdout, CR, "")
 
-        run_cmd(child, "(monitor)", f"include @action/{board}/init.resc")
+        run_cmd(child, "(monitor)", f"include @action/device/{board}/init.resc")
 
         if network:
             run_cmd(child, f"({machine})", "connector Connect host.tap switch0", timeout=240)

@@ -4,7 +4,7 @@ emulation CreateSwitch "switch0"
 
 using sysbus
 mach create $name
-machine LoadPlatformDescription @action/hifive_unleashed/platform.repl
+machine LoadPlatformDescription @action/device/hifive_unleashed/platform.repl
 
 # rootfs
 machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'

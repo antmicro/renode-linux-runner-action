@@ -81,7 +81,7 @@ runs:
         fi
       shell: bash
       env:
-        PYTHON_VERSION: "3.9"
+        PYTHON_VERSION: "3.10"
 
     - id: create-working-directory
       run: |
