@@ -1,4 +1,4 @@
-From 24ac53e9a7a286f6c781e197a4161f54da544e53 Mon Sep 17 00:00:00 2001
+From e444834cc5b6aa4d4e85fd7a5777b91a9a05022b Mon Sep 17 00:00:00 2001
 From: Wiktor Ogrodnik <wogrodnik@internships.antmicro.com>
 Date: Thu, 6 Apr 2023 14:30:25 +0200
 Subject: [PATCH 2/2] disable multicore emulation

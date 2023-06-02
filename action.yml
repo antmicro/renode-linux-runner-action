@@ -1,4 +1,7 @@
-name: Renode linux tester
+name: Renode linux runner action
+description: Test your project inside emulated Linux
+author: Antmicro
+
 inputs:
   renode-run:
     description: Command or a list of commands to run in Renode
@@ -63,6 +66,8 @@ inputs:
     description: Fail fast
     required: false
     default: true
+
+
 runs:
   using: composite
   steps:

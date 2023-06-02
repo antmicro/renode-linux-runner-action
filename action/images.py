@@ -144,7 +144,7 @@ def burn_rootfs_image(
         type of the image supported by action native or docker
     """
 
-    os_makedirs("images/rootfs/home")
+    os_makedirs("images/rootfs/home", exist_ok=True)
 
     if image_type == "native":
         get_file(image, "rootfs.tar.xz")
