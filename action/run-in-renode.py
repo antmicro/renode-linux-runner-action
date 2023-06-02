@@ -50,7 +50,7 @@ def run_renode_in_background():
     except CalledProcessError as e:
         sys.exit(e.returncode)
 
-    sleep(5)
+    sleep(7)
 
 
 def get_machine_name(resc: str) -> str:
