@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common import run_cmd, FilteredStdout, get_file
+from common import run_cmd, FilteredStdout, get_file, error
 from devices import add_devices, added_devices
 from dependencies import add_packages, add_repos, downloaded_packages, downloaded_default_packages
 from images import prepare_shared_directories, prepare_kernel_and_initramfs, burn_rootfs_image
 
-from pexpect import spawn as px_spawn, TIMEOUT as px_TIMEOUT
 from subprocess import run, CalledProcessError
-from sys import stdout as sys_stdout, exit as sys_exit, argv as sys_argv
-from json import loads as json_loads, decoder as json_decoder
 from datetime import datetime
 from time import sleep
-from re import match as re_match
+
+import re
+import sys
+import json
+import pexpect as px
 
 
 CR = r'\r'
@@ -47,9 +48,9 @@ def run_renode_in_background():
     try:
         run(["screen", "-d", "-m", "renode", "--disable-xwt"], check=True)
     except CalledProcessError as e:
-        sys_exit(e.returncode)
+        sys.exit(e.returncode)
 
-    sleep(5)
+    sleep(7)
 
 
 def get_machine_name(resc: str) -> str:
@@ -64,7 +65,7 @@ def get_machine_name(resc: str) -> str:
 
     with open(resc) as file:
         for line in file:
-            match = re_match(r"^\s*\$name\s*\?=\s*\"(.*)\"\s*$", line)
+            match = re.match(r"^\s*\$name\s*\?=\s*\"(.*)\"\s*$", line)
             if match:
                 return match.group(1)
 
@@ -88,21 +89,21 @@ def configure_board(arch: str, board: str, resc: str, repl: str):
     """
 
     if arch not in default_boards:
-        print("Architecture not supportted!")
-        sys_exit(1)
+        error("Architecture not supportted!")
+        sys.exit(1)
 
     if board == "default":
         board = default_boards[arch]
 
     if board == "custom" and (resc == "default" or repl == "default"):
         print("You have to provide resc and repl for custom board")
-        sys_exit(1)
+        sys.exit(1)
 
     if resc != "default":
-        get_file(resc, f"action/{board}/init.resc")
+        get_file(resc, f"action/device/{board}/init.resc")
 
     if repl != "default":
-        get_file(repl, f"action/{board}/platform.repl")
+        get_file(repl, f"action/device/{board}/platform.repl")
 
     return (arch, board)
 
@@ -112,7 +113,7 @@ def setup_network():
     Setups host tap interface and connect it to Renode.
     """
 
-    child = px_spawn("sh", encoding="utf-8", timeout=10)
+    child = px.spawn("sh", encoding="utf-8", timeout=10)
 
     try:
         child.expect_exact('#')
@@ -120,7 +121,7 @@ def setup_network():
 
         # FilteredStdout is used to remove \r characters from telnet output.
         # GitHub workflow log GUI interprets this sequence as newline.
-        child.logfile_read = FilteredStdout(sys_stdout, CR, "")
+        child.logfile_read = FilteredStdout(sys.stdout, CR, "")
 
         run_cmd(child, "#", "telnet 127.0.0.1 1234")
 
@@ -139,9 +140,8 @@ def setup_network():
         run_cmd(child, "#", f"iptables -t nat -A POSTROUTING -o {HOST_INTERFACE} -j MASQUERADE")
 
         child.expect_exact("#")
-    except px_TIMEOUT:
-        print("Timeout!")
-        sys_exit(1)
+    except px.TIMEOUT:
+        error("Timeout!")
 
 
 def setup_renode(board: str, network: bool):
@@ -162,13 +162,12 @@ def setup_renode(board: str, network: bool):
     if network:
         setup_network()
 
-    machine = get_machine_name(f"action/{board}/init.resc")
+    machine = get_machine_name(f"action/device/{board}/init.resc")
 
     if not machine:
-        print("Machine name not found")
-        sys_exit(1)
+        error("Machine name not found")
 
-    child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8", timeout=10)
+    child = px.spawn("telnet 127.0.0.1 1234", encoding="utf-8", timeout=10)
 
     try:
         child.expect_exact("'^]'.")
@@ -176,9 +175,9 @@ def setup_renode(board: str, network: bool):
 
         # FilteredStdout is used to remove \r characters from telnet output.
         # GitHub workflow log GUI interprets this sequence as newline.
-        child.logfile_read = FilteredStdout(sys_stdout, CR, "")
+        child.logfile_read = FilteredStdout(sys.stdout, CR, "")
 
-        run_cmd(child, "(monitor)", f"include @action/{board}/init.resc")
+        run_cmd(child, "(monitor)", f"include @action/device/{board}/init.resc")
 
         if network:
             run_cmd(child, f"({machine})", "connector Connect host.tap switch0", timeout=240)
@@ -191,7 +190,7 @@ def setup_renode(board: str, network: bool):
         if index == 0:
             child.sendline("root")
         elif index == 1:
-            sys_exit(1)
+            sys.exit(1)
         elif index == 2:
             child.sendline('')
 
@@ -237,12 +236,12 @@ def setup_renode(board: str, network: bool):
             setup_python(child)
 
         child.expect_exact("#")
-    except px_TIMEOUT:
+    except px.TIMEOUT:
         print("Timeout!")
-        sys_exit(1)
+        sys.exit(1)
 
 
-def setup_python(child: px_spawn):
+def setup_python(child: px.spawn):
     """
     Install previously downloaded python packages in emulated linux.
 
@@ -264,9 +263,8 @@ def setup_python(child: px_spawn):
         run_cmd(child, "#", f"pip install {' '.join([f'/var/packages/{package}' for package in downloaded_packages])} --no-index --no-deps --no-build-isolation --root-user-action=ignore", timeout=3600)
 
         run_cmd(child, "#", "rm -r /var/packages", timeout=3600)
-    except px_TIMEOUT:
-        print("Timeout!")
-        sys_exit(1)
+    except px.TIMEOUT:
+        error("Timeout!")
 
 
 def run_cmds_in_renode(commands_to_run: str, fail_fast: bool):
@@ -289,7 +287,7 @@ def run_cmds_in_renode(commands_to_run: str, fail_fast: bool):
 
     for cmd in commands_to_run.splitlines():
         try:
-            child = px_spawn("telnet 127.0.0.1 1234", encoding="utf-8")
+            child = px.spawn("telnet 127.0.0.1 1234", encoding="utf-8")
 
             child.expect_exact("'^]'.", timeout=60)
 
@@ -297,7 +295,7 @@ def run_cmds_in_renode(commands_to_run: str, fail_fast: bool):
 
             # FilteredStdout is used to remove \r characters from telnet output.
             # GitHub workflow log GUI interprets this sequence as newline.
-            child.logfile_read = FilteredStdout(sys_stdout, CR, "")
+            child.logfile_read = FilteredStdout(sys.stdout, CR, "")
 
             child.sendline(cmd)
             child.expect_exact("#", timeout=None)
@@ -310,31 +308,30 @@ def run_cmds_in_renode(commands_to_run: str, fail_fast: bool):
             if exit_code_local != 0:
                 exit_code = exit_code_local
                 if fail_fast:
-                    sys_exit(exit_code)
+                    sys.exit(exit_code)
 
-        except px_TIMEOUT:
-            print("Timeout!")
-            sys_exit(1)
+        except px.TIMEOUT:
+            error("Timeout!")
 
     if not fail_fast and exit_code != 0:
         print(f"Failed! Last exit code: {exit_code}")
-        sys_exit(exit_code)
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":
-    if len(sys_argv) != 5:
+    if len(sys.argv) != 5:
         print("Wrong number of arguments")
         exit(1)
 
     try:
-        args: dict[str, str] = json_loads(sys_argv[1])
-    except json_decoder.JSONDecodeError:
-        print(f"JSON decoder error for string: {sys_argv[1]}")
+        args: dict[str, str] = json.loads(sys.argv[1])
+    except json.decoder.JSONDecodeError:
+        print(f"JSON decoder error for string: {sys.argv[1]}")
         exit(1)
 
-    user_directory = sys_argv[2]
-    action_repo = sys_argv[3]
-    action_ref = sys_argv[4]
+    user_directory = sys.argv[2]
+    action_repo = sys.argv[3]
+    action_ref = sys.argv[4]
 
     arch, board = configure_board(
         args.get("arch", "riscv64"),
@@ -345,8 +342,7 @@ if __name__ == "__main__":
 
     kernel = args.get("kernel", "")
     if kernel.strip() == "" and board == "custom":
-        print("You have to provide custom kernel for custom board.")
-        sys_exit(1)
+        error("You have to provide custom kernel for custom board.")
     elif kernel.strip() == "":
         kernel = DEFAULT_KERNEL_PATH.format(action_repo, action_ref, arch, board)
 

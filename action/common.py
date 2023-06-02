@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pexpect import spawn as px_spawn
-from re import compile as re_compile, sub as re_sub
 from urllib.parse import urlparse
-from os import path as os_path, makedirs as os_makedirs
-from sys import exit as sys_exit
-from shutil import move
+
+import os
+import re
+import sys
+import shutil
 import requests
+import pexpect as px
 
 
 class FilteredStdout(object):
@@ -34,11 +35,11 @@ class FilteredStdout(object):
         replace : string to replace found patterns
         """
         self.stream = stream
-        self.pattern = re_compile(pattern)
+        self.pattern = re.compile(pattern)
         self.replace = replace
 
     def _write(self, string):
-        self.stream.write(re_sub(self.pattern, self.replace, string))
+        self.stream.write(re.sub(self.pattern, self.replace, string))
 
     def __getattr__(self, attr):
         if attr == 'write':
@@ -46,18 +47,19 @@ class FilteredStdout(object):
         return getattr(self.stream, attr)
 
 
-def is_url(url):
+def error(msg: str):
     """
-    Check if provided parameter is valid URL
+    Print message and exit with error code 1
+
+    Parameters
+        ----------
+        msg : message to print
     """
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc])
-    except ValueError:
-        return False
+    print(msg)
+    sys.exit(1)
 
 
-def run_cmd(child_process: px_spawn,
+def run_cmd(child_process: px.spawn,
             output_to_expect: str,
             cmd_to_run: str,
             timeout: int = -1):
@@ -85,6 +87,17 @@ def run_cmd(child_process: px_spawn,
     child_process.sendline(cmd_to_run)
 
 
+def is_url(url):
+    """
+    Check if provided parameter is valid URL
+    """
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
+
+
 def get_file(path_or_url: str, target_path: str):
     """
     File downloader. Download the file from provide URL as filename
@@ -97,20 +110,18 @@ def get_file(path_or_url: str, target_path: str):
     """
 
     if target_path.find('/') != -1:
-        os_makedirs("/".join(target_path.split("/")[:-1]), exist_ok=True)
+        os.makedirs("/".join(target_path.split("/")[:-1]), exist_ok=True)
 
-    if os_path.isfile(path_or_url):
-        move(path_or_url, target_path)
+    if os.path.isfile(path_or_url):
+        shutil.move(path_or_url, target_path)
     elif is_url(path_or_url):
         try:
             r = requests.get(path_or_url)
             r.raise_for_status()
         except (requests.exceptions.MissingSchema, requests.RequestException) as error:
-            print(f"Error while downloading {path_or_url} {error.response}")
-            sys_exit(1)
+            error(f"Error while downloading {path_or_url} {error.response}")
         finally:
             with open(target_path, "wb") as fd:
                 fd.write(r.content)
     else:
-        print(f"Invalid path or URL: {path_or_url}")
-        sys_exit(1)
+        error(f"Invalid path or URL: {path_or_url}")

@@ -231,6 +231,6 @@ It is possible to replace the Linux image on which the tests are run and mount t
 
 The action allows you to select your own board and choose its configuration. You can select a board from the list (remember that you also need to select the matching processor architecture). Here are the available boards:
 
-- [riscv64 - hifive_unleashed](action/hifive_unleashed/init.resc)
+- [riscv64 - hifive_unleashed](action/device/hifive_unleashed/init.resc)
 
 You can also choose the default board: `default` or your own board: `custom`. In the latter case, you have to provide your own resc and repl files, which will conigure the emulation. Configuration files can be selected using [`resc`](https://renode.readthedocs.io/en/latest/introduction/using.html#resc-scripts) and [`repl`](https://renode.readthedocs.io/en/latest/advanced/platform_description_format.html) parameters. You can read more about these files in the [Renode documentation](https://renode.readthedocs.io/en/latest/index.html).
