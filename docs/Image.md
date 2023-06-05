@@ -36,8 +36,9 @@ Currently, the following `image` configurations are provided:
 * riscv64:
 
   * image-riscv64-default.tar.xz
+  * image-arm32-default.tar.xz
 
-This image contains the following software:
+This images contains the following software:
 
 * Full busybox 1.36.0 with ash shell
 * Python 3.11.2

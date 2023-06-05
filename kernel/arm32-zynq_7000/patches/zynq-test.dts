@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+#include "zynq-7000.dtsi"
+
+/ {
+	model = "Zynq Test";
+	compatible = "xlnx,zynq-7000";
+	
+	aliases {
+		serial0 = &uart0;
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x20000000>;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	usb_phy0: phy0 {
+		compatible = "ulpi-phy";
+		#phy-cells = <0>;
+		reg = <0xe0002000 0x1000>;
+		view-port = <0x0170>;
+		drv-vbus;
+	};
+
+	virtio@e0104000 {
+		compatible = "virtio,mmio";       	
+		reg = <0xe0104000 0x150>;
+		interrupt-parent = <&intc>;
+		interrupts = <0 63 1>;
+	};
+};
+
+&uart0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+	flash@0 {
+		compatible = "micron,mt25qu256a", "jedec,spi-nor";
+		reg = <0x00>;
+		spi-max-frequency = <50000000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@spi-test0 {
+			label = "spi-flash";
+			reg = <0x0 0x10000>;
+		};
+	};
+        flash@1 {
+                compatible = "spansion,s25hs512t", "jedec,spi-nor";
+                reg = <0x01>;
+                spi-max-frequency = <50000000>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+                partition@spi-test1 {
+                        label = "spi-flash";
+                        reg = <0x0 0x4000000>;
+                };
+        };
+};
+
+&usb0 {
+	status = "okay";
+	dr_mode = "host";
+	usb-phy = <&usb_phy0>;
+};
+
+&gem0 {
+	status = "okay";
+	phy-mode = "rgmii-id";
+	phy-handle = <&phy3>;
+	/delete-property/ local-mac-address;
+
+	phy3: ethernet-phy@3 {
+		reg = <3>;
+		txc-skew-ps = <1800>;
+		txen-skew-ps = <420>;
+
+		txd0-skew-ps = <420>;
+		txd1-skew-ps = <420>;
+		txd2-skew-ps = <420>;
+		txd3-skew-ps = <420>;
+
+		rxc-skew-ps = <900>;
+		rxdv-skew-ps = <420>;
+
+		rxd0-skew-ps = <420>;
+		rxd1-skew-ps = <420>;
+		rxd2-skew-ps = <420>;
+		rxd3-skew-ps = <420>;
+	};
+};
+
+&sdhci0 {
+	status = "okay";
+	broken-cd = <0x1>;
+	disable-wp;
+};

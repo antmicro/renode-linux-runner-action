@@ -45,8 +45,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [riscv64]
-        board: [hifive_unleashed]
+        arch: [riscv64, arm32]
+        include:
+          - arch: riscv64
+            board: hifive_unleashed
+          - arch: arm32
+            board: zynq_7000
 
     steps:
       - uses: actions/checkout@v3
@@ -72,7 +76,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [riscv64]
+        arch: [riscv64, arm32]
 
     steps:
       - uses: actions/checkout@v3
@@ -137,6 +141,33 @@ jobs:
             git+https://github.com/antmicro/tuttest.git@c44309e0365c54759fb36864fb77bf8b347bd647
           repos: https://github.com/antmicro/pyrav4l2.git pyrav4l2
 
+  arm32-test:
+    runs-on: ubuntu-latest
+    needs: send-to-releases
+    if: ${{ !failure() && !github.event.act }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: test
+        uses: ./
+        with:
+          arch: arm32
+          shared-dirs: tests
+          renode-run: |
+            wget example.org
+            sh gpio.sh
+            sh i2c.sh
+            python pyrav4l2/.github/save_examples.py pyrav4l2/README.md
+            python examples/controls-enumeration.py
+          devices: |
+            vivid
+            gpio 0 16
+            i2c 0x1C
+          python-packages: |
+            git+https://github.com/antmicro/pyrav4l2.git@3c071a7494b6b67263c4dddb87b47025338fd960
+            git+https://github.com/antmicro/tuttest.git@c44309e0365c54759fb36864fb77bf8b347bd647
+          repos: https://github.com/antmicro/pyrav4l2.git pyrav4l2
+
   riscv64-docker-test:
     runs-on: ubuntu-latest
     needs: send-to-releases
@@ -154,6 +185,27 @@ jobs:
           renode-run: |
             ls /dev | grep video
             bash bash_test.sh
+          devices: vivid
+
+  arm32-docker-test:
+    runs-on: ubuntu-latest
+    needs: send-to-releases
+    if: ${{ !failure() && !github.event.act }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: test
+        uses: ./
+        with:
+          arch: arm32
+          image-type: docker
+          image: arm32v7/ubuntu
+          shared-dirs: tests
+          renode-run: |
+            ls /dev | grep video
+            bash bash_test.sh
+            uname -a
+            cat /etc/os-release
           devices: vivid
 
   should-fail-test:

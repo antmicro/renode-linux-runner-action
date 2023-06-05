@@ -5,7 +5,7 @@
 
 This section describes in detail how to build `kernel` packages that will be compatible with this action.
 
-First, it is worth mentioning that what we call the `kernel` package is actually a `tar.xz` archive containing `initramfs` and firmware for the emulated system. Currently, we only support the RISC-V architecture and the HiFive Unleashed board, so the `kernel` package should be customized for that particular device.
+First, it is worth mentioning that what we call the `kernel` package is actually a `tar.xz` archive containing `initramfs` and firmware for the emulated system.
 
 ## Default images available
 
@@ -15,7 +15,11 @@ We currently provide the following `kernel` configurations:
 
   * kernel-riscv64-hifive_unleashed.tar.xz
 
-This package contains drivers essential for HiFive Unleashed, but we have also added some other drivers:
+* arm32:
+
+  * kernel-arm32-zynq_7000.tar.xz
+
+This packages contains drivers essential for selected boards, but we have also added some other drivers:
 
 * `vivid` for Video4Linux
 * `i2c-stub`
