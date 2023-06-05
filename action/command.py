@@ -288,11 +288,11 @@ class Interpreter:
             "host": ["sh", self.default_stdout, [
                 Command(command=[], waitfor=["#"], timeout=5),
                 Command(command=["screen -d -m renode --disable-xwt"], waitfor=["#"], timeout=5),
-            ], 5],
+            ], 7],
             "renode": ["telnet 127.0.0.1 1234", self.default_stdout, [
                 Command(command=[], waitfor=["(monitor)"], timeout=5),
                 Command(command=["emulation CreateServerSocketTerminal 3456 \"term\""], waitfor=["(monitor)"], timeout=5),
-            ], 3],
+            ], 5],
             "target": ["telnet 127.0.0.1 3456", self.default_stdout, [], 0],
         }
 
