@@ -36,7 +36,7 @@ CR = r'\r'
 @dataclass
 class Command:
     """
-    Stores command to the Terminal with configuration options
+    Stores a Terminal command with custom configuration options
     """
 
     command: list[str] = field(default_factory=list)
@@ -47,7 +47,7 @@ class Command:
 
     def apply_vars(self, vars: Dict[str, str]):
         """
-        Applies variables that were provided with section or are global variables.
+        Resolves variables that were provided with section or are global variables.
 
         Parameters
         ----------
@@ -70,12 +70,12 @@ class Command:
 @dataclass
 class Section:
     """
-    Section are blocks of commands that refers to one terminal and has
-    one basic functionality, for example mount the filesystem or install
-    package. The section also stores additional parameters like "echo" to print
+    A section is a block of commands that are performed on one terminal and have
+    one basic goal, for example mount the filesystem or install a
+    package. It also stores additional parameters like "echo" to print
     terminal output on the screen, etc.
 
-    Sections can depend on other section and together creates dependency graph.
+    Sections can depend on other sections and together form a dependency graph.
     """
 
     name: str
@@ -90,7 +90,7 @@ class Section:
 
     def apply_vars(self, default_vars: Dict[str, str]):
         """
-        Apply provided variables to each command.
+        Resolve provided and global variables for each command.
 
         Parameters
         ----------
@@ -144,8 +144,8 @@ class Section:
 
 class Terminal:
     """
-    Wrapper to pexpect.spawn with additional configuration.
-    The class collects TerminalCommand objects and runs it sequentialy.
+    pexpect.spawn wrapper with additional configuration.
+    Collects TerminalCommand objects and runs them sequentially.
     """
 
     class TerminalCommandType(Enum):
@@ -155,8 +155,8 @@ class Terminal:
     @dataclass
     class TerminalCommand:
         """
-        Simpler equalivent of command class to use internaly in Terminal.run() evaluator.
-        It has different types: EXPECT for string or SENDLINE to terminal.
+        Simpler equivalent of Command used internally in Terminal.run().
+        There are two variants: EXPECT for waiting for a string, or SENDLINE for sending a line to the terminal.
         """
         type: 'Terminal.TerminalCommandType'
         line: list[str]
@@ -172,7 +172,7 @@ class Terminal:
         ----------
         name: terminal name
         spawn_point: the starting command that initializes terminal
-        stdout: when command is executed in the echo mode terminal output is redirected to this TextIO
+        stdout: if the command is executed in echo mode, the output is redirected to this TextIO
         commands: adds these initial commands to buffer
         """
         self.queue: queue.Queue['Terminal.TerminalCommand'] = queue.Queue()
@@ -267,7 +267,7 @@ class Terminal:
 
 class Interpreter:
     """
-    Interpreter stores sctions and terminals and provides functionalities to manage them
+    Stores Sections and Terminals, and provides functionalities to manage them
     """
 
     sections: Dict[str, Section] = {}
@@ -306,7 +306,7 @@ class Interpreter:
 
     def _load_sections(self) -> None:
         """
-        Loads sections from yaml files stored in action/sections and action/user_section catalog and add them to `sections` dict
+        Loads Sections from YAML files stored in 'action/sections' and 'action/user_sections' directories and adds them to the `sections` dict
 
         Parameters
         ----------
@@ -326,7 +326,7 @@ class Interpreter:
 
     def _sort_sections(self) -> None:
         """
-        Prepares order of execution the sections.
+        Prepares the order of execution of the Sections by sorting them based on their dependencies.
         It takes into account deleted sections and detects cyclic dependencies.
         """
 
@@ -351,16 +351,16 @@ class Interpreter:
 
     def add_terminal(self, name: str, spawn_point: str, stdout: TextIO, init_commands: list[Command], init_sleep: int) -> Terminal:
         """
-        Adds new terminal. It also creates new section with the same name as Terminal. All sections that refers to that terminal
-        has strict dependency to this section.
+        Adds a new Terminal. It also creates a new Section with the same name as the Terminal. All Sections that refers to that Terminal
+        have a strict dependency on this Section.
 
         Parameters
         ----------
-        name: name of the terminal
-        spawn_point: the linux command that spawns the terminal
-        stdout: where output from the Terminal shoud be redirect
-        init_commands: commands that initialize termial environment
-        init_sleep: how much time the action should wait after initialize the terminal with it's commands
+        name: name of the Terminal
+        spawn_point: the Linux command that spawns the terminal
+        stdout: where to redirect the output from the Terminal
+        init_commands: commands that initialize the Terminal environment
+        init_sleep: how much time should pass between initializing the Terminal and executing its commands
         """
         self.add_section(Section(
             name=name, refers=name, sleep=init_sleep, commands=init_commands
@@ -370,7 +370,7 @@ class Interpreter:
 
     def add_section(self, section: Section) -> None:
         """
-        Adds section
+        Adds a Section
 
         Parameters
         ----------
@@ -398,7 +398,7 @@ class Interpreter:
 
     def evaluate(self) -> None:
         """
-        Evaluate all loaded sections
+        Evaluates all added Sections
         """
 
         self._sort_sections()

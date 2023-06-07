@@ -28,7 +28,7 @@ Using the default configuration, you can enable the devices you want and run com
 - [`rootfs-size`](#rootfs-size) - Set size of the rootfs image. Default: auto
 - [`image-type`](#image) - native or docker. Read about the differences in the [image section](#image)
 - [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture or docker image identifier. If not specified, the action will use the default one. See releases for examples.
-- [`sections`](#sections) - In case your modified system require to modify default initialization in renode or target system you can replace our commands by apply your own sections.
+- [`sections`](#sections) - Allows you to change the way the system is initialized. See [Sections](#sections) for more details.
 
 ### Borad and devices configuration
 
@@ -227,7 +227,7 @@ The size of the mounted rootfs can be specified with the `rootfs-size` parameter
 
 ## Sections
 
-Sometimes, after replacing the initramfs or board configuration, you may need to change the default commands, that action are executed on each run. You can use the 'Section' mechanism. All the commands that the action executes are stored in the section files in `action/sections/*.yml`. If you want to change one of these, you can pass your own section through the `sections` action argument. If your section has the same name, it will replace the default one.
+Sometimes, after replacing the initramfs or board configuration, you may need to change the default commands that the action executes on each run. You can use the 'Section' mechanism. All the commands that the action executes are stored in the section files in `action/sections/*.yml`. If you want to change any of these, you can pass your own section through the `sections` action argument. If your section has the same name as one of the default ones, it will replace it.
 
 For example:
 
@@ -245,17 +245,17 @@ For example:
 
 ### Section syntax
 
-Section file is a standard yaml file and you can configure fileds:
+A section file is a YAML file with the following fields:
 
-- `name`: the only mandatory field, it is used to resolve dependencies
-- `dependencies`: the array of sections that must be executed before this section. If your section depends on the non-existent section, that dependency will be ignored. This list is empty by default.
-- `refers`: the name of the terminal to which the commands refers to. The action has three open terminals (host, target, renode).
-- `echo`: Boolean parameter. If true, the output from terminal will be printed. Default: false
-- `timeout`: Default timeout for the each command. Commands can override this setting. Default: null, so no timeout for your commands.
-- `fail_fast`: Boolean parameter. If true, the action will return the error after the first failed command. Otherwise, the action will fail at the end of the section. Default: true
-- `sleep`: The action will wait for `sleep` seconds before proceeding to the next section. Defaut: 0
-- `command`: List of string or Command objects to execute. Default: empty
-- `vars`: Dictionary of variables. [Read more about it here](#vars). Default: empty
+- `name`: the only mandatory field; it is used to resolve dependencies between sections.
+- `dependencies`: the array of sections that must be executed before this section. If your section depends on a non-existent section, that dependency will be ignored. This list is empty by default.
+- `refers`: the name of the terminal on which the commands will be executed. The action has three available terminals (`host`, `target`, `renode`).
+- `echo`: Boolean parameter. If true, the output from the terminal will be printed. Default: false
+- `timeout`: Default timeout for each command. Commands can override this setting. Default: null, meaning no timeout for your commands.
+- `fail_fast`: Boolean parameter. If true, the action will return the error from the first failed command and stop. Otherwise, the action will fail at the end of the section. Default: true
+- `sleep`: The action will wait for the specified time in seconds before proceeding to the next section. Default: 0
+- `command`: List of commands or `Command` objects to execute. Default: empty
+- `vars`: Dictionary of variables. [Read more about it here](#variables). Default: empty
 
 For example:
 
@@ -281,26 +281,24 @@ vars:
 
 ### Command syntax
 
-Creating list of commands you just can use a list of string, but if you want to customize commands you can use Command object:
-
-Command object has fields:
+For a list of commands you can just use a list of strings, but if you want more powerful customization, you can use a `Command` object with the following fields:
 
 - `command`: A list of strings. The command will be selected from the list whose index was equal to the index in the expected list of the previous command. This allows you to react in different ways to different command results.
-- waitfor`: A list of strings. The action will wait for one of the strings and pass its index to the next command.
-- `timeout`: Timeout for the command. This overrides the default command in the section. By default, the timeout is inherited from the section.
+- `waitfor`: A list of strings. The action will wait for one of the strings and pass its index to the next command.
+- `timeout`: Timeout in seconds for the command. By default, the timeout is inherited from the section.
 - `echo`: Boolean parameter. If true, the output from the terminal is printed. By default this parameter is inherited from the section.
 - `check_exit_code`: Boolean parameter. If true, the terminal will check whether the command failed or not. Default: true
 
-### Vars
+### Variables
 
-You can define the list of variables and use it later with `${{VAR_NAME}}`. In addition, the action has global variables:
+You can define a list of variables and use it later with `${{VAR_NAME}}`. In addition, some predefined global variables are available:
 
-- `${{BOARD}}`: selected board name
-- `${{NOW}}`: current time in a format `%Y-%m-%d %H:%M:%S`
+- `${{BOARD}}`: name of the selected board
+- `${{NOW}}`: current date and time in the format `%Y-%m-%d %H:%M:%S`
 
-### Miscellaneous
+### Terminal initialization
 
-All sections that refer to a particular terminal have a hidden additional dependency. They depend on the section that has the same name as terminal (for example, renode). These sections are used to configure the terminal. However, you can replace one of them by simply using it's name in your section.
+All sections that refer to a particular terminal have an additional hidden dependency. They depend on the section that has the same name as the terminal (for example, `renode`). These sections are used to configure the terminal. However, you can replace each one by simply using its name in your section.
 
 ## Kernel
 

@@ -72,7 +72,7 @@ inputs:
     required: false
     default: true
   sections:
-    description: Add your section to existing configuration
+    description: Add your section to the existing configuration
     required: false
     default: ""
 
