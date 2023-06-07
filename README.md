@@ -17,7 +17,7 @@ Using the default configuration, you can enable the devices you want and run com
 ### Tests configurtion
 
 - [`renode-run`](#running-your-commands-in-emulated-linux) - A command or a list of commands to run in Renode.
-- [`renode-run-yaml`](#running-your-commands-in-emulated-linux) - A command or a list of commands to run in Renode, but written in yaml in [section format](#sections)
+- [`renode-run-yaml`](#running-your-commands-in-emulated-linux) - A command or a list of commands to run in Renode, but written in yaml in [task format](#tasks)
 - [`shared-dirs`](#shared-directories) - Shared directory paths. The contents of these directories will be mounted in Renode.
 - [`python-packages`](#python-packages) - Python packages from PyPI library or git repository that will be sideloaded into emulated Linux.
 - [`repos`](#git-repositories) - git repositories that will be sideloaded into emulated Linux.
@@ -28,7 +28,7 @@ Using the default configuration, you can enable the devices you want and run com
 - [`rootfs-size`](#rootfs-size) - Set size of the rootfs image. Default: auto
 - [`image-type`](#image) - native or docker. Read about the differences in the [image section](#image)
 - [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture or docker image identifier. If not specified, the action will use the default one. See releases for examples.
-- [`sections`](#sections) - Allows you to change the way the system is initialized. See [Sections](#sections) for more details.
+- [`tasks`](#tasks) - Allows you to change the way the system is initialized. See [Tasks](#tasks) for more details.
 
 ### Borad and devices configuration
 
@@ -225,9 +225,9 @@ The size of the mounted rootfs can be specified with the `rootfs-size` parameter
     rootfs-size: 512M
 ```
 
-## Sections
+## Tasks
 
-Sometimes, after replacing the initramfs or board configuration, you may need to change the default commands that the action executes on each run. You can use the 'Section' mechanism. All the commands that the action executes are stored in the section files in `action/sections/*.yml`. If you want to change any of these, you can pass your own section through the `sections` action argument. If your section has the same name as one of the default ones, it will replace it.
+Sometimes, after replacing the initramfs or board configuration, you may need to change the default commands that the action executes on each run. You can use the 'Task' mechanism. All the commands that the action executes are stored in the task files in `action/tasks/*.yml`. If you want to change any of these, you can pass your own task through the `tasks` action argument. If your task has the same name as one of the default ones, it will replace it.
 
 For example:
 
@@ -238,29 +238,29 @@ For example:
     renode-run: |
       command1
       command2
-    sections: |
-      path/to/section/1
-      https://section2/
+    tasks: |
+      path/to/task/1
+      https://task2/
 ```
 
-### Section syntax
+### Task syntax
 
-A section file is a YAML file with the following fields:
+A task file is a YAML file with the following fields:
 
-- `name`: the only mandatory field; it is used to resolve dependencies between sections.
-- `dependencies`: the array of sections that must be executed before this section. If your section depends on a non-existent section, that dependency will be ignored. This list is empty by default.
-- `refers`: the name of the terminal on which the commands will be executed. The action has three available terminals (`host`, `target`, `renode`).
-- `echo`: Boolean parameter. If true, the output from the terminal will be printed. Default: false
+- `name`: the only mandatory field; it is used to resolve dependencies between tasks.
+- `dependencies`: the array of tasks that must be executed before this task. If your task depends on a non-existent task, that dependency will be ignored. This list is empty by default.
+- `refers`: the name of the shell on which the commands will be executed. The action has three available shells (`host`, `target`, `renode`).
+- `echo`: Boolean parameter. If true, the output from the shell will be printed. Default: false
 - `timeout`: Default timeout for each command. Commands can override this setting. Default: null, meaning no timeout for your commands.
-- `fail_fast`: Boolean parameter. If true, the action will return the error from the first failed command and stop. Otherwise, the action will fail at the end of the section. Default: true
-- `sleep`: The action will wait for the specified time in seconds before proceeding to the next section. Default: 0
+- `fail_fast`: Boolean parameter. If true, the action will return the error from the first failed command and stop. Otherwise, the action will fail at the end of the task. Default: true
+- `sleep`: The action will wait for the specified time in seconds before proceeding to the next task. Default: 0
 - `command`: List of commands or `Command` objects to execute. Default: empty
 - `vars`: Dictionary of variables. [Read more about it here](#variables). Default: empty
 
 For example:
 
 ```yaml
-name: section1
+name: task1
 dependencies: [renode_config]
 refers: target
 echo: true
@@ -283,11 +283,11 @@ vars:
 
 For a list of commands you can just use a list of strings, but if you want more powerful customization, you can use a `Command` object with the following fields:
 
-- `command`: A list of strings. The command will be selected from the list whose index was equal to the index in the expected list of the previous command. This allows you to react in different ways to different command results.
+- `command`: A list of different shell commands. The shell command will be selected based of the index of expected string that was matched in the previous command. This allows you to react in different ways to different command results.
 - `waitfor`: A list of strings. The action will wait for one of the strings and pass its index to the next command.
-- `timeout`: Timeout in seconds for the command. By default, the timeout is inherited from the section.
-- `echo`: Boolean parameter. If true, the output from the terminal is printed. By default this parameter is inherited from the section.
-- `check_exit_code`: Boolean parameter. If true, the terminal will check whether the command failed or not. Default: true
+- `timeout`: Timeout in seconds for the command. By default, the timeout is inherited from the task.
+- `echo`: Boolean parameter. If true, the output from the shell is printed. By default this parameter is inherited from the task.
+- `check_exit_code`: Boolean parameter. If true, the shell will check whether the command failed or not. Default: true
 
 ### Variables
 
@@ -296,9 +296,9 @@ You can define a list of variables and use it later with `${{VAR_NAME}}`. In add
 - `${{BOARD}}`: name of the selected board
 - `${{NOW}}`: current date and time in the format `%Y-%m-%d %H:%M:%S`
 
-### Terminal initialization
+### Shell initialization
 
-All sections that refer to a particular terminal have an additional hidden dependency. They depend on the section that has the same name as the terminal (for example, `renode`). These sections are used to configure the terminal. However, you can replace each one by simply using its name in your section.
+All tasks that refer to a particular shell have an additional hidden dependency. They depend on the task that has the same name as the shell (for example, `renode`). These tasks are used to configure the shell. However, you can replace each one by simply using its name in your task.
 
 ## Kernel
 

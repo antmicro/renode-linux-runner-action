@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 from typing import Dict, Iterator, Any, TextIO
 from types import NoneType
 from time import sleep
-from enum import Enum
 
 import os
 import re
@@ -36,7 +35,7 @@ CR = r'\r'
 @dataclass
 class Command:
     """
-    Stores a Terminal command with custom configuration options
+    Stores a Shell command with custom configuration options
     """
 
     command: list[str] = field(default_factory=list)
@@ -47,7 +46,7 @@ class Command:
 
     def apply_vars(self, vars: Dict[str, str]):
         """
-        Resolves variables that were provided with section or are global variables.
+        Resolves variables that were provided with task or are global variables.
 
         Parameters
         ----------
@@ -68,14 +67,14 @@ class Command:
 
 
 @dataclass
-class Section:
+class Task:
     """
-    A section is a block of commands that are performed on one terminal and have
+    A task is a block of commands that are performed on one shell and have
     one basic goal, for example mount the filesystem or install a
     package. It also stores additional parameters like "echo" to print
-    terminal output on the screen, etc.
+    shell output on the screen, etc.
 
-    Sections can depend on other sections and together form a dependency graph.
+    Tasks can depend on other tasks and together form a dependency graph.
     """
 
     name: str
@@ -99,9 +98,10 @@ class Section:
         for command in self.commands:
             command.apply_vars(dict(self.vars, **default_vars))
 
+    @staticmethod
     def load_from_yaml(yaml_string: str, additional_settings: Dict[str, Any] = {}):
         """
-        Construct the section from yaml.
+        Construct the task from yaml.
 
         Parameters
         ----------
@@ -112,7 +112,7 @@ class Section:
         obj.update(additional_settings)
 
         if "name" not in obj.keys():
-            error("section description file must have at least 'name' field")
+            error("task description file must have at least 'name' field")
 
         obj["commands"] = [
             Command(command=[com])
@@ -121,17 +121,18 @@ class Section:
             for com in obj.get("commands", [])
         ]
 
-        return dacite.from_dict(data_class=Section, data=obj)
+        return dacite.from_dict(data_class=Task, data=obj)
 
+    @staticmethod
     def form_multiline_string(name: str, string: str, config: Dict[str, Any]):
         """
-        Construct the section from multiline string of commands.
+        Construct the task from multiline string of commands.
 
         Parameters
         ----------
-        name: identifier of the section
+        name: identifier of the task
         string: multiline string with commands
-        config: additional parameters to Section as dictionary
+        config: additional parameters to Task as dictionary
         """
 
         config["name"] = name
@@ -139,45 +140,27 @@ class Section:
             Command(command=[com]) for com in string.splitlines()
         ]
 
-        return dacite.from_dict(data_class=Section, data=config)
+        return dacite.from_dict(data_class=Task, data=config)
 
 
-class Terminal:
+class Shell:
     """
     pexpect.spawn wrapper with additional configuration.
-    Collects TerminalCommand objects and runs them sequentially.
+    Collects Command objects and runs them sequentially.
     """
 
-    class TerminalCommandType(Enum):
-        EXPECT = 0
-        SENDLINE = 1
-
-    @dataclass
-    class TerminalCommand:
-        """
-        Simpler equivalent of Command used internally in Terminal.run().
-        There are two variants: EXPECT for waiting for a string, or SENDLINE for sending a line to the terminal.
-        """
-        type: 'Terminal.TerminalCommandType'
-        line: list[str]
-        timeout: int | NoneType = None
-        check_exit_code: bool = False
-        echo: bool = False
-
-    sys.stdout
-
-    def __init__(self, name: str, spawn_point: str, stdout: TextIO, commands: list[Command]) -> None:
+    def __init__(self, name: str, spawn_cmd: str, stdout: TextIO, commands: list[Command]) -> None:
         """
         Parameters
         ----------
-        name: terminal name
-        spawn_point: the starting command that initializes terminal
+        name: shell name
+        spawn_cmd: the starting command that initializes shell
         stdout: if the command is executed in echo mode, the output is redirected to this TextIO
         commands: adds these initial commands to buffer
         """
-        self.queue: queue.Queue['Terminal.TerminalCommand'] = queue.Queue()
+        self.queue: queue.Queue[Command] = queue.Queue()
         self.name: str = name
-        self.spawn_point: str = spawn_point
+        self.spawn_cmd: str = spawn_cmd
         self.child: px.spawn = None
         self.last_option = 0
         self.stdout = stdout
@@ -187,18 +170,27 @@ class Terminal:
 
     def spawn(self) -> None:
         """
-        Start terminal
+        Start shell
         """
 
         try:
             self.child = px.spawn(
-                self.spawn_point,
+                self.spawn_cmd,
                 encoding="utf-8",
                 timeout=None
             )
 
         except px.TIMEOUT:
             error("Timeout!")
+
+    def expect(self, command: Command) -> None:
+        self.last_option = self.child.expect(command.waitfor, timeout=command.timeout)
+
+    def sendline(self, command: Command) -> None:
+        if command.command == []:
+            return
+
+        self.child.sendline(command.command[self.last_option])
 
     def add_command(self, command: Command) -> None:
         """
@@ -209,28 +201,26 @@ class Terminal:
         command: command
         """
 
-        if command.command != []:
-            self.queue.put(
-                Terminal.TerminalCommand(
-                    Terminal.TerminalCommandType.SENDLINE,
-                    command.command,
-                    echo=command.echo
-                )
-            )
+        self.queue.put(command)
 
-        self.queue.put(
-            Terminal.TerminalCommand(
-                Terminal.TerminalCommandType.EXPECT,
-                command.waitfor,
-                timeout=command.timeout,
-                check_exit_code=command.check_exit_code,
-                echo=command.echo)
-        )
-
-    def run(self) -> Iterator[int]:
+    def run_step(self) -> Iterator[int]:
         """
         Runs single command from buffer per iteration and optionally yields it's error code
         """
+
+        def return_code(command: Command):
+
+            if self.name in ["renode"] or not command.check_exit_code:
+                return 0
+
+            self.child.logfile_read = None
+            self.child.sendline("echo RESULT:${?}")
+            self.child.expect(r"RESULT:(\d+)", timeout=10)
+            ret = int(self.child.match.group(1))
+            self.child.expect_exact("#", timeout=10)
+            self.child.logfile_read = self.stdout if command.echo else None
+
+            return ret
 
         if not self.child:
             self.spawn()
@@ -238,39 +228,26 @@ class Terminal:
         while not self.queue.empty():
 
             command = self.queue.get()
-            return_code = 0
-
             self.child.logfile_read = self.stdout if command.echo else None
 
             try:
-                match command.type:
-                    case Terminal.TerminalCommandType.EXPECT:
-                        self.last_option = self.child.expect(command.line, timeout=command.timeout)
+                self.sendline(command)
+                self.expect(command)
 
-                        if self.name in ["host", "target"] and command.check_exit_code:
-                            self.child.logfile_read = None
-                            self.child.sendline("echo RESULT:${?}")
-                            self.child.expect(r"RESULT:(\d+)", timeout=10)
-                            return_code = int(self.child.match.group(1))
-                            self.child.expect_exact("#", timeout=10)
-                            self.child.logfile_read = self.stdout if command.echo else None
+                yield return_code(command)
 
-                    case Terminal.TerminalCommandType.SENDLINE:
-                        self.child.sendline(command.line[self.last_option])
             except IndexError:
                 error("Not enough options for last expect!")
             except px.TIMEOUT:
                 error("Timeout!")
 
-            yield return_code
-
 
 class Interpreter:
     """
-    Stores Sections and Terminals, and provides functionalities to manage them
+    Stores Tasks and Shells, and provides functionalities to manage them
     """
 
-    sections: Dict[str, Section] = {}
+    tasks: Dict[str, Task] = {}
     default_vars: Dict[str, str] = {}
 
     def __init__(self, vars: Dict[str, str]) -> None:
@@ -284,7 +261,7 @@ class Interpreter:
         # GitHub workflow log GUI interprets this sequence as newline.
         self.default_stdout = FilteredStdout(sys.stdout, CR, "")
 
-        init_terminals = {
+        init_shells = {
             "host": ["sh", self.default_stdout, [
                 Command(command=[], waitfor=["#"], timeout=5),
                 Command(command=["screen -d -m renode --disable-xwt"], waitfor=["#"], timeout=5),
@@ -296,113 +273,113 @@ class Interpreter:
             "target": ["telnet 127.0.0.1 3456", self.default_stdout, [], 0],
         }
 
-        self.terminals = {name: self.add_terminal(name, *term) for (name, term) in init_terminals.items()}
+        self.shells = {name: self.add_shell(name, *term) for (name, term) in init_shells.items()}
 
         self._add_default_vars(vars)
-        self._load_sections()
+        self._load_tasks()
 
     def _add_default_vars(self, vars: Dict[str, str]) -> None:
         self.default_vars.update(vars)
 
-    def _load_sections(self) -> None:
+    def _load_tasks(self) -> None:
         """
-        Loads Sections from YAML files stored in 'action/sections' and 'action/user_sections' directories and adds them to the `sections` dict
+        Loads Tasks from YAML files stored in 'action/tasks' and 'action/user_tasks' directories and adds them to the `tasks` dict
 
         Parameters
         ----------
         vars: global variables
         """
 
-        for catalog in ["sections", "user_sections"]:
-            for path, _, files in os.walk(f"action/{catalog}"):
+        for directory in ["tasks", "user_tasks"]:
+            for path, _, files in os.walk(f"action/{directory}"):
                 for f in files:
                     fp = os.path.join(path, f)
                     if fp.endswith((".yml", ".yaml")):
                         print(f"Loading {fp}")
-                        with open(fp) as section_file:
-                            sec = Section.load_from_yaml(section_file.read())
+                        with open(fp) as task_file:
+                            sec = Task.load_from_yaml(task_file.read())
                             sec.apply_vars(self.default_vars)
-                            self.add_section(sec)
+                            self.add_task(sec)
 
-    def _sort_sections(self) -> None:
+    def _sort_tasks(self) -> None:
         """
-        Prepares the order of execution of the Sections by sorting them based on their dependencies.
-        It takes into account deleted sections and detects cyclic dependencies.
+        Prepares the order of execution of the Tasks by sorting them based on their dependencies.
+        It takes into account deleted tasks and detects cyclic dependencies.
         """
 
-        section_graph = ig.Graph(directed=True)
+        task_graph = ig.Graph(directed=True)
 
-        for name in self.sections:
-            section_graph.add_vertex(name)
+        for name in self.tasks:
+            task_graph.add_vertex(name)
 
-        for name, section in self.sections.items():
-            for dependency in section.dependencies:
-                if dependency not in self.sections.keys():
+        for name, task in self.tasks.items():
+            for dependency in task.dependencies:
+                if dependency not in self.tasks.keys():
                     continue
-                section_graph.add_edge(dependency, name)
+                task_graph.add_edge(dependency, name)
 
         try:
-            results = section_graph.topological_sorting(mode='out')
-            sorted_sections = [section_graph.vs[i]["name"] for i in results]
+            results = task_graph.topological_sorting(mode='out')
+            sorted_tasks = [task_graph.vs[i]["name"] for i in results]
         except ig.InternalError:
             error("Cyclic dependencies detected. Aborting.")
 
-        self.sorted_sections = sorted_sections
+        self.sorted_tasks = sorted_tasks
 
-    def add_terminal(self, name: str, spawn_point: str, stdout: TextIO, init_commands: list[Command], init_sleep: int) -> Terminal:
+    def add_shell(self, name: str, spawn_cmd: str, stdout: TextIO, init_commands: list[Command], init_sleep: int) -> Shell:
         """
-        Adds a new Terminal. It also creates a new Section with the same name as the Terminal. All Sections that refers to that Terminal
-        have a strict dependency on this Section.
+        Adds a new Shell. It also creates a new Task with the same name as the Shell. All Tasks that refers to that Shell
+        have a strict dependency on this Task.
 
         Parameters
         ----------
-        name: name of the Terminal
-        spawn_point: the Linux command that spawns the terminal
-        stdout: where to redirect the output from the Terminal
-        init_commands: commands that initialize the Terminal environment
-        init_sleep: how much time should pass between initializing the Terminal and executing its commands
+        name: name of the Shell
+        spawn_cmd: the Linux command that spawns the Shell
+        stdout: where to redirect the output from the Shell
+        init_commands: commands that initialize the Shell environment
+        init_sleep: how much time should pass between initializing the Shell and executing its commands
         """
-        self.add_section(Section(
+        self.add_task(Task(
             name=name, refers=name, sleep=init_sleep, commands=init_commands
         ))
 
-        return Terminal(name, spawn_point=spawn_point, stdout=stdout, commands=[])
+        return Shell(name, spawn_cmd=spawn_cmd, stdout=stdout, commands=[])
 
-    def add_section(self, section: Section) -> None:
+    def add_task(self, task: Task) -> None:
         """
-        Adds a Section
+        Adds a Task
 
         Parameters
         ----------
-        section: The Section to add
+        task: The Task to add
         """
 
-        if not section:
+        if not task:
             return
 
-        if section.refers != section.name:
-            section.dependencies.append(section.refers)
+        if task.refers != task.name:
+            task.dependencies.append(task.refers)
 
-        self.sections[section.name] = section
+        self.tasks[task.name] = task
 
-    def delete_section(self, name: str) -> None:
+    def delete_task(self, name: str) -> None:
         """
-        Deletes section
+        Deletes task
 
         Parameters
         ----------
-        name: name of the Section to delete
+        name: name of the Task to delete
         """
 
-        self.sections.pop(name)
+        self.tasks.pop(name)
 
     def evaluate(self) -> None:
         """
-        Evaluates all added Sections
+        Evaluates all added Tasks
         """
 
-        self._sort_sections()
-        print("Sections: ", self.sorted_sections)
+        self._sort_tasks()
+        print("Tasks: ", self.sorted_tasks)
 
         default_expect: Dict[str, list[str]] = {
             "host": ["#"],
@@ -410,32 +387,32 @@ class Interpreter:
             "renode": [r"\([\-a-zA-Z\d\s]+\)"],
         }
 
-        for section in [self.sections[i] for i in self.sorted_sections]:
+        for task in [self.tasks[i] for i in self.sorted_tasks]:
 
             exit_code = 0
-            for command in section.commands:
+            for command in task.commands:
 
-                command.timeout = section.timeout  \
-                    if command.timeout == -1       \
+                command.timeout = task.timeout  \
+                    if command.timeout == -1    \
                     else command.timeout
 
-                command.waitfor = default_expect[section.refers]  \
-                    if command.waitfor == []                      \
+                command.waitfor = default_expect[task.refers]  \
+                    if command.waitfor == []                   \
                     else command.waitfor
 
-                command.echo = section.echo  \
-                    if not command.echo      \
+                command.echo = task.echo  \
+                    if not command.echo   \
                     else command.echo
 
-                self.terminals[section.refers].add_command(command)
+                self.shells[task.refers].add_command(command)
 
-            for return_code in self.terminals[section.refers].run():
+            for return_code in self.shells[task.refers].run_step():
                 if return_code != 0:
                     exit_code = return_code
-                if exit_code != 0 and section.fail_fast:
+                if exit_code != 0 and task.fail_fast:
                     sys.exit(exit_code)
 
             if exit_code != 0:
                 error(f"Failed! Last exit code: {exit_code}")
 
-            sleep(section.sleep)
+            sleep(task.sleep)

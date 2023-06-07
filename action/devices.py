@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from command import Section, Command
+from command import Task, Command
 
 from typing import Protocol, Any
 from dataclasses import dataclass
@@ -152,7 +152,7 @@ available_devices = {
 added_devices: list[Device] = []
 
 
-def add_devices(devices: str) -> Section:
+def add_devices(devices: str) -> Task:
     """
     Parses arguments and commands, and adds devices to the
     `available devices` list
@@ -206,7 +206,7 @@ def add_devices(devices: str) -> Section:
         else:
             print(f"WARNING: Device {device_name} not found")
 
-    return Section(
+    return Task(
         "device",
         dependencies=[],
         refers="target",

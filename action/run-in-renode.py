@@ -16,7 +16,7 @@ from common import get_file, error
 from devices import add_devices
 from dependencies import add_repos, add_packages, add_python_setup
 from images import prepare_shared_directories, prepare_kernel_and_initramfs, burn_rootfs_image
-from command import Interpreter, Section
+from command import Interpreter, Task
 
 from datetime import datetime
 from typing import Dict
@@ -112,22 +112,22 @@ if __name__ == "__main__":
         args.get("image-type", "native")
     )
 
-    for it, custom_section in enumerate(args.get("sections", "").splitlines()):
-        get_file(custom_section, f"action/user_sections/section{it}.yml")
+    for it, custom_task in enumerate(args.get("tasks", "").splitlines()):
+        get_file(custom_task, f"action/user_tasks/task{it}.yml")
 
     interpreter = Interpreter({
         "NOW": str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
         "BOARD": board
     })
 
-    interpreter.add_section(add_devices(args.get("devices", "")))
-    interpreter.add_section(add_python_setup())
+    interpreter.add_task(add_devices(args.get("devices", "")))
+    interpreter.add_task(add_python_setup())
 
     if args.get("network", "true") != "true":
         for i in ["host", "renode", "target"]:
-            interpreter.delete_section(f"{i}_network")
+            interpreter.delete_task(f"{i}_network")
 
-    interpreter.add_section(Section.form_multiline_string("action_test", args.get("renode-run", ""), config={
+    interpreter.add_task(Task.form_multiline_string("action_test", args.get("renode-run", ""), config={
         "echo": True,
         "refers": "target",
         "dependencies": ["python", "chroot"],
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     renode_run_yaml: str = args.get("renode-run-yaml", "")
 
     if renode_run_yaml.strip() != "":
-        interpreter.add_section(Section.load_from_yaml(renode_run_yaml, additional_settings={
+        interpreter.add_task(Task.load_from_yaml(renode_run_yaml, additional_settings={
             "name": "action_test",
             "refers": "target",
             "dependencies": ["python", "chroot"],

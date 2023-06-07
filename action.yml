@@ -71,8 +71,8 @@ inputs:
     description: Fail fast
     required: false
     default: true
-  sections:
-    description: Add your section to the existing configuration
+  tasks:
+    description: Add your tasks to the existing configuration
     required: false
     default: ""
 

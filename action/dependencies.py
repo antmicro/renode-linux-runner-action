@@ -14,7 +14,7 @@
 
 from common import run_cmd, error
 from images import shared_directories_action, shared_directories_actions
-from command import Section
+from command import Task
 
 import os
 import re
@@ -176,7 +176,7 @@ def add_repos(repos: str):
         )
 
 
-def add_python_setup() -> Section:
+def add_python_setup() -> Task:
 
     if len(downloaded_packages) == 0:
         return None
@@ -196,7 +196,7 @@ def add_python_setup() -> Section:
         "rm -r /var/packages",
     ]
 
-    return Section.form_multiline_string("python", string="\n".join(commands), config={
+    return Task.form_multiline_string("python", string="\n".join(commands), config={
         "timeout": 3600,
         "refers": "target",
         "dependencies": ["chroot"],
