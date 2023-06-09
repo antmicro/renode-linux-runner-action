@@ -16,8 +16,7 @@ Using the default configuration, you can enable the devices you want and run com
 
 ### Tests configurtion
 
-- [`renode-run`](#running-your-commands-in-emulated-linux) - A command or a list of commands to run in Renode.
-- [`renode-run-yaml`](#running-your-commands-in-emulated-linux) - A command or a list of commands to run in Renode, but written in yaml in [task format](#tasks)
+- [`renode-run`](#running-your-commands-in-emulated-linux) - A command, list or [yaml Task](#tasks) with commands to run in Renode.
 - [`shared-dirs`](#shared-directories) - Shared directory paths. The contents of these directories will be mounted in Renode.
 - [`python-packages`](#python-packages) - Python packages from PyPI library or git repository that will be sideloaded into emulated Linux.
 - [`repos`](#git-repositories) - git repositories that will be sideloaded into emulated Linux.
@@ -87,6 +86,20 @@ Of course, you can also run shell scripts, but you have to load them into the em
     shared-dirs: scripts
     renode-run: sh my-script.sh
 ```
+
+You can also set additional test parameters with [task format](#tasks). For example:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    network: false
+    renode-run: |
+      - should-fail: true
+      - commands:
+        - "wget example.org"
+```
+
+This test will complete successfully because the network will be disabled in the test environment and wget will return a non-zero exit code.
 
 ### Special cases
 

@@ -113,7 +113,7 @@ class Shell:
             self.child.logfile_read = self.stdout if command.echo else None
 
             if command.should_fail:
-                ret = int(ret != 0)
+                ret = int(ret == 0)
 
             return ret
 

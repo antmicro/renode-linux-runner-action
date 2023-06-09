@@ -50,7 +50,12 @@ class Command:
                 else self[key]
 
     @staticmethod
-    def load_from_dict(dict: Dict[str, Any]):
+    def load_from_dict(dict: Dict[str, Any] | str):
+
+        if type(dict) == str:
+            dict = {"command": [dict]}
+        elif type(dict.get("command", None)) == str:
+            dict["command"] = [dict["command"]]
 
         name_map = {name: name for name in dict.keys()} | {
             "check-exit-code": "check_exit_code",
@@ -130,7 +135,7 @@ class Task:
         return dacite.from_dict(data_class=Task, data={name_map[name]: value for name, value in dict.items()})
 
     @staticmethod
-    def load_from_yaml(yaml_string: str, additional_settings: Dict[str, Any] = {}) -> 'Task':
+    def load_from_yaml(yaml_string: str, config: Dict[str, Any] = {}) -> 'Task':
         """
         Construct the task from yaml.
 
@@ -140,15 +145,16 @@ class Task:
         """
 
         obj: Dict[str, Any] = yaml.safe_load(yaml_string)
-        obj.update(additional_settings)
+        if type(obj) is not dict:
+            raise yaml.YAMLError
+
+        obj.update(config)
 
         if "name" not in obj.keys():
             error("task description file must have at least 'name' field")
 
         obj["commands"] = [
-            Command(command=[com])
-            if type(com) is str
-            else Command.load_from_dict(com)
+            Command.load_from_dict(com)
             for com in obj.get("commands", [])
         ]
 

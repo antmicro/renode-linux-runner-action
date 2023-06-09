@@ -183,7 +183,6 @@ def add_devices(devices: str) -> Dict[str, Dict[str, str]]:
             vars_pointer += variable_list_len
             args_pointer += params_list_len
 
-        print(f"New device: {device_name} - {new_device}")
         added_devices[f"device-{device_name}"] = new_device
 
     return added_devices

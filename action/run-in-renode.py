@@ -24,6 +24,7 @@ from typing import Dict
 
 import sys
 import json
+import yaml
 
 
 DEFAULT_IMAGE_PATH = "https://github.com/{}/releases/download/{}/image-{}-default.tar.xz"
@@ -69,16 +70,29 @@ def configure_board(arch: str, board: str, resc: str, repl: str):
     return (arch, board)
 
 
+def test_task(test_task_str: str):
+
+    additional_settings = {
+        "name": "action_test",
+        "refers": "target",
+        "requires": ["chroot", "python"],
+        "echo": True,
+    }
+
+    try:
+        return Task.load_from_yaml(test_task_str, config=additional_settings)
+    except yaml.YAMLError:
+        return Task.form_multiline_string("action_test", test_task_str, config=additional_settings)
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 5:
-        print("Wrong number of arguments")
-        exit(1)
+        error("Wrong number of arguments")
 
     try:
         args: dict[str, str] = json.loads(sys.argv[1])
     except json.decoder.JSONDecodeError:
-        print(f"JSON decoder error for string: {sys.argv[1]}")
-        exit(1)
+        error(f"JSON decoder error for string: {sys.argv[1]}")
 
     user_directory = sys.argv[2]
     action_repo = sys.argv[3]
@@ -104,7 +118,7 @@ if __name__ == "__main__":
     devices = add_devices(args.get("devices", ""))
     python_packages = add_packages(arch, args.get("python-packages", ""))
 
-    override_task_vars = devices | python_packages
+    optional_tasks = devices | python_packages
 
     add_repos(args.get("repos", ""))
 
@@ -126,31 +140,15 @@ if __name__ == "__main__":
     dispatcher = CommandDispatcher({
         "NOW": str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
         "BOARD": board
-    }, override_task_vars)
+    }, optional_tasks)
 
-    for task in override_task_vars:
+    for task in optional_tasks:
         dispatcher.enable_task(task, True)
 
     if args.get("network", "true") != "true":
         for i in ["host", "renode", "target"]:
             dispatcher.enable_task(f"{i}_network", False)
 
-    for device in devices:
-        dispatcher.enable_task(device, True)
-
-    dispatcher.add_task(Task.form_multiline_string("action_test", args.get("renode-run", ""), config={
-        "echo": True,
-        "refers": "target",
-        "requires": ["chroot", "python"],
-    }))
-
-    renode_run_yaml: str = args.get("renode-run-yaml", "")
-
-    if renode_run_yaml.strip() != "":
-        dispatcher.add_task(Task.load_from_yaml(renode_run_yaml, additional_settings={
-            "name": "action_test",
-            "refers": "target",
-            "requires": ["chroot", "python"],
-        }))
+    dispatcher.add_task(test_task(args.get("renode-run", "")))
 
     dispatcher.evaluate()

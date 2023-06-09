@@ -81,10 +81,8 @@ class CommandDispatcher:
                 for f in files:
                     fp = os.path.join(path, f)
                     if fp.endswith((".yml", ".yaml")):
-                        print(f"Loading {fp}")
                         with open(fp) as task_file:
                             task = Task.load_from_yaml(task_file.read())
-                            print(f"Override_vars for {task.name} is: {override_vars.get(task.name, {})}")
                             task.apply_vars(self.default_vars, override_vars.get(task.name, {}))
                             self.add_task(task)
 
@@ -173,7 +171,6 @@ class CommandDispatcher:
         """
 
         self._sort_tasks()
-        print("Tasks: ", self.sorted_tasks)
 
         for task in [self.tasks[i] for i in self.sorted_tasks]:
 
