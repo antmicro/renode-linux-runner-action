@@ -1,0 +1,23 @@
+name: python
+requires: [chroot]
+refers: target
+echo: true
+disabled: true
+timeout: 5
+fail-fast: false
+check-exit-code: false
+commands:
+  - "mkdir -p $HOME/.config/pip"
+  - "echo [global] >> $HOME/.config/pip/pip.conf"
+  - "echo disable-pip-version-check = True >> $HOME/.config/pip/pip.conf"
+  - command: 
+    - "pip install ${{PYTHON_DEF_PACKAGES}} --no-index --no-deps --no-build-isolation --root-user-action=ignore"
+    timeout: 3600
+  - command:
+    - "pip install ${{PYTHON_PACKAGES}} --no-index --no-deps --no-build-isolation --root-user-action=ignore"
+    timeout: 3600
+  - "rm -r /var/packages"
+vars:
+  PYTHON_DEF_PACKAGES: ""
+  PYTHON_PACKAGES: ""
+

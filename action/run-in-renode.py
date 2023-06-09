@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from common import get_file, error
+from command import Task
 from devices import add_devices
-from dependencies import add_repos, add_packages, add_python_setup
+from dependencies import add_repos, add_packages
 from images import prepare_shared_directories, prepare_kernel_and_initramfs, burn_rootfs_image
-from command import Interpreter, Task
+from dispatcher import CommandDispatcher
 
 from datetime import datetime
 from typing import Dict
@@ -96,14 +97,21 @@ if __name__ == "__main__":
     elif kernel.strip() == "":
         kernel = DEFAULT_KERNEL_PATH.format(action_repo, action_ref, arch, board)
 
+    prepare_kernel_and_initramfs(kernel)
+
+    prepare_shared_directories(args.get("shared-dir", "") + '\n' + args.get("shared-dirs", ""))
+
+    devices = add_devices(args.get("devices", ""))
+    python_packages = add_packages(arch, args.get("python-packages", ""))
+
+    override_task_vars = devices | python_packages
+
+    add_repos(args.get("repos", ""))
+
     image = args.get("image", "")
     if image.strip() == "":
         image = DEFAULT_IMAGE_PATH.format(action_repo, action_ref, arch)
 
-    prepare_kernel_and_initramfs(kernel)
-    prepare_shared_directories(args.get("shared-dir", "") + '\n' + args.get("shared-dirs", ""))
-    add_packages(arch, args.get("python-packages", ""))
-    add_repos(args.get("repos", ""))
     burn_rootfs_image(
         user_directory,
         image,
@@ -115,31 +123,34 @@ if __name__ == "__main__":
     for it, custom_task in enumerate(args.get("tasks", "").splitlines()):
         get_file(custom_task, f"action/user_tasks/task{it}.yml")
 
-    interpreter = Interpreter({
+    dispatcher = CommandDispatcher({
         "NOW": str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
         "BOARD": board
-    })
+    }, override_task_vars)
 
-    interpreter.add_task(add_devices(args.get("devices", "")))
-    interpreter.add_task(add_python_setup())
+    for task in override_task_vars:
+        dispatcher.enable_task(task, True)
 
     if args.get("network", "true") != "true":
         for i in ["host", "renode", "target"]:
-            interpreter.delete_task(f"{i}_network")
+            dispatcher.enable_task(f"{i}_network", False)
 
-    interpreter.add_task(Task.form_multiline_string("action_test", args.get("renode-run", ""), config={
+    for device in devices:
+        dispatcher.enable_task(device, True)
+
+    dispatcher.add_task(Task.form_multiline_string("action_test", args.get("renode-run", ""), config={
         "echo": True,
         "refers": "target",
-        "dependencies": ["python", "chroot"],
+        "requires": ["chroot", "python"],
     }))
 
     renode_run_yaml: str = args.get("renode-run-yaml", "")
 
     if renode_run_yaml.strip() != "":
-        interpreter.add_task(Task.load_from_yaml(renode_run_yaml, additional_settings={
+        dispatcher.add_task(Task.load_from_yaml(renode_run_yaml, additional_settings={
             "name": "action_test",
             "refers": "target",
-            "dependencies": ["python", "chroot"],
+            "requires": ["chroot", "python"],
         }))
 
-    interpreter.evaluate()
+    dispatcher.evaluate()

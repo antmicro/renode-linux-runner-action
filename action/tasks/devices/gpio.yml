@@ -1,0 +1,11 @@
+name: device-gpio
+required-by: [chroot]
+refers: target
+echo: true
+timeout: 10
+fail-fast: true
+disabled: true
+commands:
+  - "modprobe gpio-mockup gpio_mockup_ranges=${{ranges}}"
+vars:
+  ranges: "0,32"

@@ -1,9 +1,9 @@
 name: chroot
-dependencies: [target_network, device]
+requires: [target_network]
 refers: target
 echo: true
 timeout: 5
-fail_fast: true
+fail-fast: true
 commands:
   - "mount /dev/vda /mnt"
   - "cd /mnt"

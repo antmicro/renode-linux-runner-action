@@ -14,7 +14,8 @@
 
 from common import run_cmd, error
 from images import shared_directories_action, shared_directories_actions
-from command import Task
+
+from typing import Dict
 
 import os
 import re
@@ -26,14 +27,6 @@ import pexpect as px
 # they are insalled before regular packages and only if user
 # choose at least one regular package
 default_packages = ["wheel"]
-
-
-# python default packages files ready to sideload
-downloaded_default_packages = []
-
-
-# python packages files ready to sideload
-downloaded_packages = []
 
 
 def get_package(child: px.spawn, arch: str, package_name: str) -> list[str]:
@@ -61,7 +54,7 @@ def get_package(child: px.spawn, arch: str, package_name: str) -> list[str]:
     return [file.split(' ')[1].split('/')[1] for file in output_str.splitlines() if file.startswith('Saved')]
 
 
-def add_packages(arch: str, packages: str) -> None:
+def get_packages(arch: str, packages: str) -> tuple[list[str], list[str]]:
     """
     Download all selected python packages and their dependencies
     for the specified architecture to sideload it later to emulated Linux.
@@ -73,11 +66,14 @@ def add_packages(arch: str, packages: str) -> None:
         raw string from github action, syntax defined in README.md
     """
 
-    global downloaded_packages
-    global downloaded_default_packages
-
     if packages.strip() == '':
-        return
+        return [], []
+
+    # python default packages files ready to sideload
+    downloaded_default_packages = []
+
+    # python packages files ready to sideload
+    downloaded_packages = []
 
     child = px.spawn(f'sh -c "cd {os.getcwd()};exec /bin/sh"', encoding="utf-8", timeout=60)
 
@@ -136,6 +132,8 @@ def add_packages(arch: str, packages: str) -> None:
     except px.TIMEOUT:
         error("Timeout!")
 
+    return downloaded_default_packages, downloaded_packages
+
 
 def add_repos(repos: str):
     """
@@ -176,30 +174,16 @@ def add_repos(repos: str):
         )
 
 
-def add_python_setup() -> Task:
+def add_packages(arch: str, packages: str) -> Dict[str, str]:
 
-    if len(downloaded_packages) == 0:
-        return None
+    downloaded_default_packages, downloaded_packages = get_packages(arch, packages)
 
-    commands = [
-        # pip configuration
-        # Disable pip version checking. Pip runs very slowly in Renode without this setting.
-        "mkdir -p $HOME/.config/pip",
-        "echo [global] >> $HOME/.config/pip/pip.conf",
-        "echo disable-pip-version-check = True >> $HOME/.config/pip/pip.conf",
-        f"pip install {' '.join([f'/var/packages/{package}' for package in downloaded_default_packages])} "
-        "--no-index --no-deps --no-build-isolation "
-        "--root-user-action=ignore",
-        f"pip install {' '.join([f'/var/packages/{package}' for package in downloaded_packages])} "
-        "--no-index --no-deps --no-build-isolation "
-        "--root-user-action=ignore",
-        "rm -r /var/packages",
-    ]
+    if downloaded_packages == []:
+        return {}
 
-    return Task.form_multiline_string("python", string="\n".join(commands), config={
-        "timeout": 3600,
-        "refers": "target",
-        "dependencies": ["chroot"],
-        "echo": True,
-        "fail_fast": False,
-    })
+    return {
+        "python": {
+            "PYTHON_DEF_PACKAGES": " ".join([f'/var/packages/{package}' for package in downloaded_default_packages]),
+            "PYTHON_PACKAGES": " ".join([f'/var/packages/{package}' for package in downloaded_packages]),
+        }
+    }

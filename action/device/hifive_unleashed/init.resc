@@ -1,7 +1,5 @@
 $name?="hifive-unleashed"
 
-emulation CreateSwitch "switch0"
-
 using sysbus
 mach create $name
 machine LoadPlatformDescription @action/device/hifive_unleashed/platform.repl
@@ -9,11 +7,6 @@ machine LoadPlatformDescription @action/device/hifive_unleashed/platform.repl
 # rootfs
 machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0x100d0000 { IRQ -> plic@50 }'
 virtio LoadImage @images/rootfs.img
-
-connector Connect sysbus.ethernet switch0
-
-# This setting increases emulation speed, thus mitigates networks errors and speedup user scripts.
-machine SetAdvanceImmediately true
 
 showAnalyzer uart0
 e51 LogFunctionNames true

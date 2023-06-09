@@ -248,11 +248,12 @@ For example:
 A task file is a YAML file with the following fields:
 
 - `name`: the only mandatory field; it is used to resolve dependencies between tasks.
-- `dependencies`: the array of tasks that must be executed before this task. If your task depends on a non-existent task, that dependency will be ignored. This list is empty by default.
+- `requires`: the array of tasks that must be executed before this task. This list is empty by default.
+- `required-by`: the array of tasks that must be executed after this task. This list is empty by default.
 - `refers`: the name of the shell on which the commands will be executed. The action has three available shells (`host`, `target`, `renode`).
 - `echo`: Boolean parameter. If true, the output from the shell will be printed. Default: false
 - `timeout`: Default timeout for each command. Commands can override this setting. Default: null, meaning no timeout for your commands.
-- `fail_fast`: Boolean parameter. If true, the action will return the error from the first failed command and stop. Otherwise, the action will fail at the end of the task. Default: true
+- `fail-fast`: Boolean parameter. If true, the action will return the error from the first failed command and stop. Otherwise, the action will fail at the end of the task. Default: true
 - `sleep`: The action will wait for the specified time in seconds before proceeding to the next task. Default: 0
 - `command`: List of commands or `Command` objects to execute. Default: empty
 - `vars`: Dictionary of variables. [Read more about it here](#variables). Default: empty
@@ -261,16 +262,16 @@ For example:
 
 ```yaml
 name: task1
-dependencies: [renode_config]
+requires: [renode_config]
 refers: target
 echo: true
 timeout: 5
-fail_fast: true
+fail-fast: true
 commands:
-  - waitfor:
+  - expect:
     - "buildroot login:"
     timeout: null
-    check_exit_code: False
+    check-exit-code: false
   - "root"
   - "dmesg -n 1"
   - "date -s \"${{NOW}}\""
@@ -284,10 +285,10 @@ vars:
 For a list of commands you can just use a list of strings, but if you want more powerful customization, you can use a `Command` object with the following fields:
 
 - `command`: A list of different shell commands. The shell command will be selected based of the index of expected string that was matched in the previous command. This allows you to react in different ways to different command results.
-- `waitfor`: A list of strings. The action will wait for one of the strings and pass its index to the next command.
+- `expect`: A list of strings. The action will wait for one of the strings and pass its index to the next command.
 - `timeout`: Timeout in seconds for the command. By default, the timeout is inherited from the task.
 - `echo`: Boolean parameter. If true, the output from the shell is printed. By default this parameter is inherited from the task.
-- `check_exit_code`: Boolean parameter. If true, the shell will check whether the command failed or not. Default: true
+- `check-exit-code`: Boolean parameter. If true, the shell will check whether the command failed or not. Default: true
 
 ### Variables
 
@@ -298,7 +299,7 @@ You can define a list of variables and use it later with `${{VAR_NAME}}`. In add
 
 ### Shell initialization
 
-All tasks that refer to a particular shell have an additional hidden dependency. They depend on the task that has the same name as the shell (for example, `renode`). These tasks are used to configure the shell. However, you can replace each one by simply using its name in your task.
+All tasks that refer to a particular shell have an additional hidden dependency. They require the task that has the same name as the shell (for example, `renode`). These tasks are used to configure the shell. However, you can replace each one by simply using its name in your task.
 
 ## Kernel
 

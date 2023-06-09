@@ -1,14 +1,14 @@
 name: target
-dependencies: [renode_config]
+requires: [renode_config]
 refers: target
 echo: true
 timeout: 5
-fail_fast: true
+fail-fast: true
 commands:
-  - waitfor:
+  - expect:
     - "buildroot login:"
     timeout: 30
-    check_exit_code: False
+    check-exit-code: False
   - "root"
   - "dmesg -n 1"
   - "date -s \"${{NOW}}\""

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from command import Task, Command
+from common import error
 
-from typing import Protocol, Any
+from typing import Protocol, Any, Dict
 from dataclasses import dataclass
 from string import hexdigits
 
@@ -30,10 +30,10 @@ class Action(Protocol):
     """
     error: str
 
-    def __call__(self, *args: Any) -> str:
+    def __call__(self, args: Any) -> str:
         raise NotImplementedError
 
-    def check_args(self, *args: Any) -> bool:
+    def check_args(self, args: Any) -> bool:
         """
         Checks if the passed parameters are correct
         """
@@ -48,13 +48,12 @@ class GPIO_SplitDevice:
     def __init__(self) -> None:
         self.error = "the first parameter must be lower than the second"
 
-    def __call__(self, *args: str) -> str:
+    def __call__(self, args: list[str]) -> list[str]:
 
-        assert len(args) >= 3, "not enough parameters passed"
-        assert args[1].isdecimal() and args[2].isdecimal()
+        assert len(args) >= 2, "not enough parameters passed"
+        assert args[0].isdecimal() and args[1].isdecimal()
 
-        command: str = args[0]
-        l, r = int(args[1]), int(args[2])
+        l, r = int(args[0]), int(args[1])
         gpio_ranges_params = []
 
         while r - l > 32:
@@ -64,8 +63,7 @@ class GPIO_SplitDevice:
         if l != r:
             gpio_ranges_params += [l, r]
 
-        return [command.split("=")[0] + '=' +
-                ','.join([str(i) for i in gpio_ranges_params])]
+        return [','.join([str(i) for i in gpio_ranges_params])]
 
     def check_args(self, args: list[str]) -> bool:
         return len(args) >= 2 and \
@@ -82,14 +80,11 @@ class I2C_SetDeviceAddress:
     def __init__(self) -> None:
         self.error = "the address has to be hexadecimal number between 3 and 119"
 
-    def __call__(self, *args: str) -> str:
+    def __call__(self, args: list[str]) -> list[str]:
 
-        assert len(args) >= 2, "not enough parameters passed"
+        assert len(args) >= 1, "not enough parameters passed"
 
-        command: str = args[0]
-        addr = args[1]
-
-        return [command.format(addr)]
+        return [args[0]]
 
     def check_args(self, args: list[str]) -> bool:
         return len(args) == 1 and \
@@ -100,116 +95,95 @@ class I2C_SetDeviceAddress:
 
 
 @dataclass
-class Device_Prototype:
+class Device:
     """
     Device Prototype: it stores available devices that can be added.
     Fields:
     ----------
-    add_commands: list[str]
-        commands that is needed to add device
-    params: list[str]
-        default parameters
+    params_list: list[str]
     command_action: list[tuple[Action, int]]
         defines number of parameters needed and the
         Action itself
     """
-    add_commands: list[str]
-    params: list[str]
+    params_list: list[str]
     command_action: list[tuple[Action, int]]
 
 
-@dataclass
-class Device:
-    """
-    Device Prototype: stores already added devices
-    Fields:
-    ----------
-    add_commands: list[str]
-        parsed commands to add the device
-    """
-    add_commands: list[str]
-
-
 available_devices = {
-    "vivid": Device_Prototype(
-                ["modprobe vivid"],
+    "vivid": Device(
                 [],
                 [(None, 0)],
             ),
-    "gpio": Device_Prototype(
-                ["modprobe gpio-mockup gpio_mockup_ranges={0},{1}"],
-                ['0', '32'],
+    "gpio": Device(
+                ["ranges"],
                 [(GPIO_SplitDevice, 2)],
             ),
-    "i2c": Device_Prototype(
-                ["modprobe i2c-stub chip_addr={0}"],
-                ["0x1C"],
+    "i2c": Device(
+                ["chip_addr"],
                 [(I2C_SetDeviceAddress, 1)],
     )
 }
 
 
-added_devices: list[Device] = []
-
-
-def add_devices(devices: str) -> Task:
+def add_devices(devices: str) -> Dict[str, Dict[str, str]]:
     """
     Parses arguments and commands, and adds devices to the
     `available devices` list
     Parameters
     ----------
-    devices: str
-        raw string from github action, syntax defined in README.md
+    devices: raw string from github action, syntax defined in README.md
     """
+
+    added_devices: Dict[str, Dict[str, str]] = {}
 
     for device in devices.splitlines():
         device = device.split()
         device_name = device[0]
 
-        errors_occured = False
-
-        if device_name in available_devices:
-            device_proto = available_devices[device_name]
-
-            new_device = Device([])
-
-            args = device[1:]
-            args_pointer = 0
-
-            if len(device[1:]) != len(device_proto.params):
-                print(f"WARNING: for device {device_name}, wrong number "
-                      "of parameters, replaced with the default ones.")
-                args = device_proto.params
-
-            for it, command in enumerate(device_proto.add_commands):
-
-                params_action: Action = device_proto.command_action[it][0]
-                params_list_len: int = device_proto.command_action[it][1]
-
-                if params_list_len == 0 or not params_action:
-                    new_device.add_commands.append(command)
-                    continue
-
-                params_action = params_action()
-                params = args[args_pointer:args_pointer + params_list_len]
-
-                if params_action.check_args(params):
-                    new_device.add_commands += params_action(command, *params)
-                else:
-                    print(f"ERROR: for device {device_name} {params_action.error}.")
-                    errors_occured = True
-
-                args_pointer += params_list_len
-
-            if not errors_occured:
-                added_devices.append(new_device)
-        else:
+        if device_name not in available_devices:
             print(f"WARNING: Device {device_name} not found")
+            continue
 
-    return Task(
-        "device",
-        dependencies=[],
-        refers="target",
-        echo=True,
-        commands=[Command(command=[command]) for commands in added_devices for command in commands.add_commands]
-    )
+        device_proto = available_devices[device_name]
+
+        new_device = {}
+
+        args = device[1:]
+        args_pointer = 0
+        vars_pointer = 0
+
+        if len(device[1:]) != sum([i[1] for i in device_proto.command_action]):
+            print(f"WARNING: for device {device_name}, wrong number "
+                  "of parameters, replaced with the default ones.")
+
+            added_devices[f"device-{device_name}"] = new_device
+            continue
+
+        for params_hook in device_proto.command_action:
+
+            params_action = params_hook[0]
+            params_list_len = params_hook[1]
+            params = args[args_pointer:args_pointer + params_list_len]
+
+            if params_list_len > 0 and params_action:
+
+                params_action: Action = params_action()
+
+                if not params_action.check_args(params):
+                    error(f"ERROR: for device {device_name} {params_action.error}.")
+
+                variable_list = params_action(params)
+                variable_list_len = len(variable_list)
+
+            else:
+                variable_list = params
+                variable_list_len = params_list_len
+
+            new_device |= {device_proto.params_list[i + vars_pointer]: var for i, var in enumerate(variable_list)}
+            vars_pointer += variable_list_len
+            args_pointer += params_list_len
+
+        print(f"New device: {device_name} - {new_device}")
+        added_devices[f"device-{device_name}"] = new_device
+
+    return added_devices

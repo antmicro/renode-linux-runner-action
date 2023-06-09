@@ -3,11 +3,11 @@
 # the tap0 interface created in the host
 
 name: target_network
-dependencies: [host_network]
+requires: [host_network, renode_network]
 refers: target
 echo: true
 timeout: 5
-fail_fast: true
+fail-fast: true
 commands:
   - "ip addr add 172.16.0.2/16 dev eth0"
   - "ip route add default via 172.16.0.1"

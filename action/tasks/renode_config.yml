@@ -1,12 +1,13 @@
 name: renode_config
-dependencies: [renode_network]
+requires: []
 refers: renode
 echo: true
 timeout: 10
-fail_fast: true
+fail-fast: true
 sleep: 2
 commands:
   - "include @action/device/${{BOARD}}/init.resc"
+  # This setting increases emulation speed, thus mitigates networks errors and speedup user scripts.
+  - "machine SetAdvanceImmediately true"
   - "connector Connect sysbus.uart0 term"
-  - "connector Connect host.tap switch0"
   - "start"

@@ -2,11 +2,11 @@
 # Linux in Renode has the static IP 172.16.0.2/16.
 
 name: host_network
-dependencies: [renode_network]
+requires: [renode_network]
 refers: host
 echo: true
 timeout: 10
-fail_fast: true
+fail-fast: true
 commands:
   - "ip addr add 172.16.0.1/16 dev ${{TAP_INTERFACE}}"
   - "ip link set up dev ${{TAP_INTERFACE}}"
