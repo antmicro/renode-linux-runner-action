@@ -1,4 +1,4 @@
-# Pyhon packages sideloading
+# Python packages sideloading
 
 You can use the `python-packages` parameter to add the Python packages you require to test your software. This is the recommended option, as downloading packages manually in the emulated system is possible, but can sometimes fail.
 

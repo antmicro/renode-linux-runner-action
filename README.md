@@ -14,7 +14,7 @@ Using the default configuration, you can enable the devices you want and run com
 
 ## Parameters
 
-### Tests configurtion
+### Tests configuration
 
 - [`renode-run`](#running-your-commands-in-emulated-linux) - A command, list or [yaml Task](#tasks) with commands to run in Renode.
 - [`shared-dirs`](#shared-directories) - Shared directory paths. The contents of these directories will be mounted in Renode.
@@ -29,7 +29,7 @@ Using the default configuration, you can enable the devices you want and run com
 - [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture or docker image identifier. If not specified, the action will use the default one. See releases for examples.
 - [`tasks`](#tasks) - Allows you to change the way the system is initialized. See [Tasks](#tasks) for more details.
 
-### Borad and devices configuration
+### Board and devices configuration
 
 - [`network`](#network) - Turn on the Internet in the emulated Linux? Default: true
 - [`devices`](#devices) - List of devices to add to the workflow. If not specified, the action will not install any devices.
@@ -324,4 +324,4 @@ The action allows you to select your own board and choose its configuration. You
 
 - [riscv64 - hifive_unleashed](action/device/hifive_unleashed/init.resc)
 
-You can also choose the default board: `default` or your own board: `custom`. In the latter case, you have to provide your own resc and repl files, which will conigure the emulation. Configuration files can be selected using [`resc`](https://renode.readthedocs.io/en/latest/introduction/using.html#resc-scripts) and [`repl`](https://renode.readthedocs.io/en/latest/advanced/platform_description_format.html) parameters. You can read more about these files in the [Renode documentation](https://renode.readthedocs.io/en/latest/index.html).
+You can also choose the default board: `default` or your own board: `custom`. In the latter case, you have to provide your own resc and repl files, which will configure the emulation. Configuration files can be selected using [`resc`](https://renode.readthedocs.io/en/latest/introduction/using.html#resc-scripts) and [`repl`](https://renode.readthedocs.io/en/latest/advanced/platform_description_format.html) parameters. You can read more about these files in the [Renode documentation](https://renode.readthedocs.io/en/latest/index.html).
