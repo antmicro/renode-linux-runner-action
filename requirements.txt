@@ -1,4 +1,7 @@
 pexpect==4.8.0
 virtualenv==20.23.0
 requests==2.27.1
+igraph==0.10.4
+dacite==1.8.1
+PyYAML==6.0
 docker-image-save @ git+https://github.com/antmicro/dockersave@76198e08286b8879e926d77f7ab9d4d09f0701b4

@@ -5,7 +5,8 @@ author: Antmicro
 inputs:
   renode-run:
     description: Command or a list of commands to run in Renode
-    required: true
+    required: false
+    default: ""
   shared-dirs:
     description: Paths to shared directories
     required: false
@@ -66,6 +67,10 @@ inputs:
     description: Fail fast
     required: false
     default: true
+  tasks:
+    description: Add your tasks to the existing configuration
+    required: false
+    default: ""
 
 
 runs:

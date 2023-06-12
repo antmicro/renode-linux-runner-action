@@ -28,9 +28,6 @@ import dockersave
 import pexpect as px
 
 
-CR = r'\r'
-
-
 @dataclass
 class shared_directories_action:
     host: str

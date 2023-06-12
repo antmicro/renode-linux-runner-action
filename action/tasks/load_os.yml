@@ -1,0 +1,14 @@
+name: target
+shell: target
+requires: [renode_config]
+echo: true
+timeout: 5
+fail-fast: true
+commands:
+  - expect:
+    - "buildroot login:"
+    timeout: 30
+    check-exit-code: False
+  - "root"
+  - "dmesg -n 1"
+  - "date -s \"${{NOW}}\""

@@ -1,0 +1,9 @@
+name: device-vivid
+shell: target
+required-by: [chroot]
+echo: true
+timeout: 10
+fail-fast: true
+disabled: true
+commands:
+  - "modprobe vivid"

@@ -16,7 +16,7 @@ Using the default configuration, you can enable the devices you want and run com
 
 ### Tests configurtion
 
-- [`renode-run`](#running-your-commands-in-emulated-linux) - A command or a list of commands to run in Renode.
+- [`renode-run`](#running-your-commands-in-emulated-linux) - A command, list or [yaml Task](#tasks) with commands to run in Renode.
 - [`shared-dirs`](#shared-directories) - Shared directory paths. The contents of these directories will be mounted in Renode.
 - [`python-packages`](#python-packages) - Python packages from PyPI library or git repository that will be sideloaded into emulated Linux.
 - [`repos`](#git-repositories) - git repositories that will be sideloaded into emulated Linux.
@@ -27,6 +27,7 @@ Using the default configuration, you can enable the devices you want and run com
 - [`rootfs-size`](#rootfs-size) - Set size of the rootfs image. Default: auto
 - [`image-type`](#image) - native or docker. Read about the differences in the [image section](#image)
 - [`image`](#image) - URL of the path to tar.xz archive with linux rootfs for the specified architecture or docker image identifier. If not specified, the action will use the default one. See releases for examples.
+- [`tasks`](#tasks) - Allows you to change the way the system is initialized. See [Tasks](#tasks) for more details.
 
 ### Borad and devices configuration
 
@@ -85,6 +86,20 @@ Of course, you can also run shell scripts, but you have to load them into the em
     shared-dirs: scripts
     renode-run: sh my-script.sh
 ```
+
+You can also set additional test parameters with [task format](#tasks). For example:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    network: false
+    renode-run: |
+      - should-fail: true
+      - commands:
+        - "wget example.org"
+```
+
+This test will complete successfully because the network will be disabled in the test environment and wget will return a non-zero exit code.
 
 ### Special cases
 
@@ -222,6 +237,82 @@ The size of the mounted rootfs can be specified with the `rootfs-size` parameter
     renode-run: python --version
     rootfs-size: 512M
 ```
+
+## Tasks
+
+Sometimes, after replacing the initramfs or board configuration, you may need to change the default commands that the action executes on each run. You can use the 'Task' mechanism. All the commands that the action executes are stored in the task files in `action/tasks/*.yml`. If you want to change any of these, you can pass your own task through the `tasks` action argument. If your task has the same name as one of the default ones, it will replace it.
+
+For example:
+
+```yaml
+- uses: antmicro/renode-linux-runner-action@v0
+  with:
+    shared-dir: shared-dir
+    renode-run: |
+      command1
+      command2
+    tasks: |
+      path/to/task/1
+      https://task2/
+```
+
+### Task syntax
+
+A task file is a YAML file with the following fields:
+
+- `name`: the only mandatory field; it is used to resolve dependencies between tasks.
+- `shell`: the name of the shell on which the commands will be executed. The action has three available shells (`host`, `target`, `renode`).
+- `requires`: the array of tasks that must be executed before this task. This list is empty by default.
+- `required-by`: the array of tasks that must be executed after this task. This list is empty by default.
+- `echo`: Boolean parameter. If true, the output from the shell will be printed. Default: false
+- `timeout`: Default timeout for each command. Commands can override this setting. Default: null, meaning no timeout for your commands.
+- `fail-fast`: Boolean parameter. If true, the action will return the error from the first failed command and stop. Otherwise, the action will fail at the end of the task. Default: true
+- `sleep`: The action will wait for the specified time in seconds before proceeding to the next task. Default: 0
+- `command`: List of commands or `Command` objects to execute. Default: empty
+- `vars`: Dictionary of variables. [Read more about it here](#variables). Default: empty
+
+For example:
+
+```yaml
+name: task1
+shell: target
+requires: [renode_config]
+echo: true
+timeout: 5
+fail-fast: true
+commands:
+  - expect:
+    - "buildroot login:"
+    timeout: null
+    check-exit-code: false
+  - "root"
+  - "dmesg -n 1"
+  - "date -s \"${{NOW}}\""
+  - "echo ${{VAR1}}"
+vars:
+  VAR1: "hello, world!"
+```
+
+### Command syntax
+
+For a list of commands you can just use a list of strings, but if you want more powerful customization, you can use a `Command` object with the following fields:
+
+- `command`: A list of different shell commands. The shell command will be selected based of the index of expected string that was matched in the previous command. This allows you to react in different ways to different command results.
+- `expect`: A list of strings. The action will wait for one of the strings and pass its index to the next command.
+- `timeout`: Timeout in seconds for the command. By default, the timeout is inherited from the task.
+- `echo`: Boolean parameter. If true, the output from the shell is printed. By default this parameter is inherited from the task.
+- `check-exit-code`: Boolean parameter. If true, the shell will check whether the command failed or not. Default: true
+
+### Variables
+
+You can define a list of variables and use it later with `${{VAR_NAME}}`. In addition, some predefined global variables are available:
+
+- `${{BOARD}}`: name of the selected board
+- `${{NOW}}`: current date and time in the format `%Y-%m-%d %H:%M:%S`
+
+### Shell initialization
+
+All tasks that refer to a particular shell have an additional hidden dependency. They require the task that has the same name as the shell (for example, `renode`). These tasks are used to configure the shell. However, you can replace each one by simply using its name in your task.
 
 ## Kernel
 

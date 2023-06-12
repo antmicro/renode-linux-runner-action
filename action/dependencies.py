@@ -15,24 +15,18 @@
 from common import run_cmd, error
 from images import shared_directories_action, shared_directories_actions
 
+from typing import Dict
+
 import os
 import re
 import json
 import pexpect as px
 
 
-# names of python packages that should be installed by default
+# names of python packages that is used to install other packages
 # they are insalled before regular packages and only if user
 # choose at least one regular package
-default_packages = ["wheel"]
-
-
-# python default packages files ready to sideload
-downloaded_default_packages = []
-
-
-# python packages files ready to sideload
-downloaded_packages = []
+installation_dependencies = ["wheel"]
 
 
 def get_package(child: px.spawn, arch: str, package_name: str) -> list[str]:
@@ -60,7 +54,7 @@ def get_package(child: px.spawn, arch: str, package_name: str) -> list[str]:
     return [file.split(' ')[1].split('/')[1] for file in output_str.splitlines() if file.startswith('Saved')]
 
 
-def add_packages(arch: str, packages: str) -> None:
+def get_packages(arch: str, packages: str) -> tuple[list[str], list[str]]:
     """
     Download all selected python packages and their dependencies
     for the specified architecture to sideload it later to emulated Linux.
@@ -72,11 +66,14 @@ def add_packages(arch: str, packages: str) -> None:
         raw string from github action, syntax defined in README.md
     """
 
-    global downloaded_packages
-    global downloaded_default_packages
-
     if packages.strip() == '':
-        return
+        return [], []
+
+    # python installation dependencies files ready to sideload
+    downloaded_installation_dependencies = []
+
+    # python packages files ready to sideload
+    downloaded_packages = []
 
     child = px.spawn(f'sh -c "cd {os.getcwd()};exec /bin/sh"', encoding="utf-8", timeout=60)
 
@@ -98,7 +95,7 @@ def add_packages(arch: str, packages: str) -> None:
         # pip needs to be updated in venv. This workaround may be removed later.
         run_cmd(child, "(venv-dir) #", "pip -q install pip==23.0.1 --progress-bar off --disable-pip-version-check")
 
-        for it, package in enumerate(default_packages + packages.splitlines()):
+        for it, package in enumerate(installation_dependencies + packages.splitlines()):
 
             print(f"processing: {package}")
 
@@ -119,8 +116,8 @@ def add_packages(arch: str, packages: str) -> None:
                 dependency_name = dependency["metadata"]["name"] + "==" + dependency["metadata"]["version"] \
                     if "vcs_info" not in dependency["download_info"] \
                     else "git+" + dependency["download_info"]["url"] + "@" + dependency["download_info"]["vcs_info"]["commit_id"]
-                if it < len(default_packages):
-                    downloaded_default_packages += get_package(child, arch, dependency_name)
+                if it < len(installation_dependencies):
+                    downloaded_installation_dependencies += get_package(child, arch, dependency_name)
                 else:
                     downloaded_packages += get_package(child, arch, dependency_name)
 
@@ -128,12 +125,14 @@ def add_packages(arch: str, packages: str) -> None:
 
         run_cmd(child, "(venv-dir) #", "deactivate")
 
-        for package in downloaded_default_packages + downloaded_packages:
+        for package in downloaded_installation_dependencies + downloaded_packages:
             run_cmd(child, "#", f"mv {package} pip")
 
         child.expect_exact("#")
     except px.TIMEOUT:
         error("Timeout!")
+
+    return downloaded_installation_dependencies, downloaded_packages
 
 
 def add_repos(repos: str):
@@ -173,3 +172,18 @@ def add_repos(repos: str):
                 "/home",
             )
         )
+
+
+def add_packages(arch: str, packages: str) -> Dict[str, str]:
+
+    downloaded_installation_dependencies, downloaded_packages = get_packages(arch, packages)
+
+    if downloaded_packages == []:
+        return {}
+
+    return {
+        "python": {
+            "PYTHON_INSTALL_DEPS": " ".join([f'/var/packages/{package}' for package in downloaded_installation_dependencies]),
+            "PYTHON_PACKAGES": " ".join([f'/var/packages/{package}' for package in downloaded_packages]),
+        }
+    }

@@ -1,0 +1,11 @@
+name: device-i2c
+shell: target
+required-by: [chroot]
+echo: true
+timeout: 10
+fail-fast: true
+disabled: true
+commands:
+  - "modprobe i2c-stub chip_addr=${{CHIP_ADDR}}"
+vars:
+  CHIP_ADDR: "0x1C"
