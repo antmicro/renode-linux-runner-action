@@ -35,7 +35,7 @@ class CommandDispatcher:
     tasks: Dict[str, Task] = {}
     default_vars: Dict[str, str] = {}
 
-    def __init__(self, global_vars: Dict[str, str], override_vars: Dict[str, Dict[str, str]]) -> None:
+    def __init__(self, board: str, global_vars: Dict[str, str], override_vars: Dict[str, Dict[str, str]]) -> None:
         """
         Parameters
         ----------
@@ -62,12 +62,12 @@ class CommandDispatcher:
         self.shells = {name: self.add_shell(name, *term) for (name, term) in init_shells.items()}
 
         self._add_default_vars(global_vars)
-        self._load_tasks(override_vars)
+        self._load_tasks(board, override_vars)
 
     def _add_default_vars(self, vars: Dict[str, str]) -> None:
         self.default_vars.update(vars)
 
-    def _load_tasks(self, override_vars: Dict[str, Dict[str, str]]) -> None:
+    def _load_tasks(self, board: str, override_vars: Dict[str, Dict[str, str]]) -> None:
         """
         Loads Tasks from YAML files stored in 'action/tasks' and 'action/user_tasks' directories and adds them to the `tasks` dict
 
@@ -76,15 +76,16 @@ class CommandDispatcher:
         override_vars: dictionary that stores different dictionaries for each task to override existing variables there
         """
 
-        for directory in ["tasks", "user_tasks"]:
-            for path, _, files in os.walk(f"action/{directory}"):
-                for f in files:
-                    fp = os.path.join(path, f)
-                    if fp.endswith((".yml", ".yaml")):
-                        with open(fp) as task_file:
-                            task = Task.load_from_yaml(task_file.read())
-                            task.apply_vars(self.default_vars, override_vars.get(task.name, {}))
-                            self.add_task(task)
+        for directory in ["action/tasks", f"action/device/{board}/tasks", "action/user_tasks"]:
+            if os.path.exists(directory):
+                for path, _, files in os.walk(directory):
+                    for f in files:
+                        fp = os.path.join(path, f)
+                        if fp.endswith((".yml", ".yaml")):
+                            with open(fp) as task_file:
+                                task = Task.load_from_yaml(task_file.read())
+                                task.apply_vars(self.default_vars, override_vars.get(task.name, {}))
+                                self.add_task(task)
 
     def _sort_tasks(self) -> None:
         """

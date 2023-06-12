@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common import run_cmd, error
+from common import run_cmd, error, archs
 from images import shared_directories_action, shared_directories_actions
 
 from typing import Dict
@@ -44,7 +44,7 @@ def get_package(child: px.spawn, arch: str, package_name: str) -> list[str]:
     """
 
     child.sendline('')
-    run_cmd(child, "(venv-dir) #", f"pip download {package_name} --platform=linux_{arch} --no-deps --progress-bar off --disable-pip-version-check")
+    run_cmd(child, "(venv-dir) #", f"pip download {package_name} --platform=linux_{archs[arch].python_name} --no-deps --progress-bar off --disable-pip-version-check")
     child.expect_exact('(venv-dir) #')
 
     # Removes strange ASCII control codes that appear during some 'pip download' runs.

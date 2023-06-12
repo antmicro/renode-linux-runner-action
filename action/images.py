@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common import run_cmd, get_file, error
+from common import get_file, error, archs
 
 from subprocess import run, DEVNULL, CalledProcessError
 from dataclasses import dataclass
@@ -25,7 +25,6 @@ import shutil
 import tarfile
 import requests
 import dockersave
-import pexpect as px
 
 
 @dataclass
@@ -102,22 +101,8 @@ def prepare_kernel_and_initramfs(kernel: str):
     with tarfile.open("kernel.tar.xz") as tar:
         tar.extractall("images")
 
-    child = px.spawn(f'sh -c "cd {os.getcwd()};exec /bin/sh"', encoding="utf-8", timeout=10)
-
-    try:
-        child.expect_exact('#')
-        child.sendline('')
-
-        run_cmd(child, "#", "mkdir -p images/initramfs")
-        run_cmd(child, "#", "cd images/initramfs && cpio -iv < ../rootfs.cpio")
-        run_cmd(child, "#", f"cd {os.getcwd()}")
-        run_cmd(child, "#", "cp images/initramfs/boot/Image images")
-        run_cmd(child, "#", "cp images/initramfs/boot/*.dtb images")
-        run_cmd(child, "#", "rm -rf images/initramfs")
-
-        child.expect_exact('#')
-    except px.TIMEOUT:
-        error("Timeout!")
+    if not os.path.exists("images/Image") and not os.path.exists("images/vmlinux"):
+        error("Kernel not found! Action expects Image or vmlinux file.")
 
 
 def burn_rootfs_image(
@@ -157,7 +142,7 @@ def burn_rootfs_image(
             image_proto = dockersave.Image(
                     image=f"{library}/{image}",
                     tag=tag,
-                    arch=arch
+                    arch=archs[arch].docker_name
             )
         except StopIteration:
             print(f"This package is not available for the selected architecture: {arch}!")

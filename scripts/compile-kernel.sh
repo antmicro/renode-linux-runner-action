@@ -6,7 +6,7 @@ BOARD="$2"
 
 # This script has 2 parameters: Processor architecture and board name
 
-mkdir -p images
+mkdir -p images tmp
 git clone --branch $BUILDROOT_VERSION https://github.com/buildroot/buildroot buildroot
 
 cd buildroot
@@ -18,6 +18,24 @@ cd ..
 
 # Information about needed files in docs/Kernel.md
 
-cp buildroot/output/images/{fw_payload.elf,rootfs.cpio} .
-tar cJvf images/kernel-$ARCH-$BOARD.tar.xz ./{fw_payload.elf,rootfs.cpio}
-rm -rf ./{fw_payload.elf,rootfs.cpio} buildroot
+if [ -f buildroot/output/images/fw_payload.elf ]; then
+    cp buildroot/output/images/fw_payload.elf tmp
+fi
+
+if [ -f buildroot/output/images/Image ]; then
+    cp buildroot/output/images/Image tmp
+elif [ -f buildroot/output/images/vmlinux ]; then
+    cp buildroot/output/images/vmlinux tmp
+else
+    echo "Kernel not found!"
+    exit 1
+fi
+
+cp buildroot/output/images/rootfs.cpio tmp
+cp buildroot/output/images/*.dtb tmp
+
+cd tmp
+tar cJvf ../images/kernel-$ARCH-$BOARD.tar.xz ./*
+cd ..
+
+rm -rf tmp buildroot

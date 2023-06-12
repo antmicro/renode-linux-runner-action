@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
 from urllib.parse import urlparse
+from typing import Dict
 
 import os
 import re
@@ -20,6 +22,24 @@ import sys
 import shutil
 import requests
 import pexpect as px
+
+
+@dataclass
+class Architecture:
+    python_name: str
+    docker_name: str
+    default_board: str
+    network_available: bool
+
+
+archs: Dict[str, Architecture] = {
+    "riscv64": Architecture(
+        python_name="riscv64",
+        docker_name="riscv64",
+        default_board="hifive_unleashed",
+        network_available=True,
+    ),
+}
 
 
 class FilteredStdout(object):
