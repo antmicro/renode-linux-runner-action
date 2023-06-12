@@ -261,9 +261,9 @@ For example:
 A task file is a YAML file with the following fields:
 
 - `name`: the only mandatory field; it is used to resolve dependencies between tasks.
+- `shell`: the name of the shell on which the commands will be executed. The action has three available shells (`host`, `target`, `renode`).
 - `requires`: the array of tasks that must be executed before this task. This list is empty by default.
 - `required-by`: the array of tasks that must be executed after this task. This list is empty by default.
-- `refers`: the name of the shell on which the commands will be executed. The action has three available shells (`host`, `target`, `renode`).
 - `echo`: Boolean parameter. If true, the output from the shell will be printed. Default: false
 - `timeout`: Default timeout for each command. Commands can override this setting. Default: null, meaning no timeout for your commands.
 - `fail-fast`: Boolean parameter. If true, the action will return the error from the first failed command and stop. Otherwise, the action will fail at the end of the task. Default: true
@@ -275,8 +275,8 @@ For example:
 
 ```yaml
 name: task1
+shell: target
 requires: [renode_config]
-refers: target
 echo: true
 timeout: 5
 fail-fast: true

@@ -1,6 +1,6 @@
 name: renode_config
+shell: renode
 requires: []
-refers: renode
 echo: true
 timeout: 10
 fail-fast: true

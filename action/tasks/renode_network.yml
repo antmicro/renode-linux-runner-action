@@ -1,6 +1,6 @@
 name: renode_network
+shell: renode
 requires: [renode_config]
-refers: renode
 echo: true
 timeout: 10
 fail-fast: true

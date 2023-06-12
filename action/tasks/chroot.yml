@@ -1,6 +1,6 @@
 name: chroot
+shell: target
 requires: [target_network]
-refers: target
 echo: true
 timeout: 5
 fail-fast: true

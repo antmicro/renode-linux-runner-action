@@ -23,10 +23,10 @@ import json
 import pexpect as px
 
 
-# names of python packages that should be installed by default
+# names of python packages that is used to install other packages
 # they are insalled before regular packages and only if user
 # choose at least one regular package
-default_packages = ["wheel"]
+installation_dependencies = ["wheel"]
 
 
 def get_package(child: px.spawn, arch: str, package_name: str) -> list[str]:
@@ -69,8 +69,8 @@ def get_packages(arch: str, packages: str) -> tuple[list[str], list[str]]:
     if packages.strip() == '':
         return [], []
 
-    # python default packages files ready to sideload
-    downloaded_default_packages = []
+    # python installation dependencies files ready to sideload
+    downloaded_installation_dependencies = []
 
     # python packages files ready to sideload
     downloaded_packages = []
@@ -95,7 +95,7 @@ def get_packages(arch: str, packages: str) -> tuple[list[str], list[str]]:
         # pip needs to be updated in venv. This workaround may be removed later.
         run_cmd(child, "(venv-dir) #", "pip -q install pip==23.0.1 --progress-bar off --disable-pip-version-check")
 
-        for it, package in enumerate(default_packages + packages.splitlines()):
+        for it, package in enumerate(installation_dependencies + packages.splitlines()):
 
             print(f"processing: {package}")
 
@@ -116,8 +116,8 @@ def get_packages(arch: str, packages: str) -> tuple[list[str], list[str]]:
                 dependency_name = dependency["metadata"]["name"] + "==" + dependency["metadata"]["version"] \
                     if "vcs_info" not in dependency["download_info"] \
                     else "git+" + dependency["download_info"]["url"] + "@" + dependency["download_info"]["vcs_info"]["commit_id"]
-                if it < len(default_packages):
-                    downloaded_default_packages += get_package(child, arch, dependency_name)
+                if it < len(installation_dependencies):
+                    downloaded_installation_dependencies += get_package(child, arch, dependency_name)
                 else:
                     downloaded_packages += get_package(child, arch, dependency_name)
 
@@ -125,14 +125,14 @@ def get_packages(arch: str, packages: str) -> tuple[list[str], list[str]]:
 
         run_cmd(child, "(venv-dir) #", "deactivate")
 
-        for package in downloaded_default_packages + downloaded_packages:
+        for package in downloaded_installation_dependencies + downloaded_packages:
             run_cmd(child, "#", f"mv {package} pip")
 
         child.expect_exact("#")
     except px.TIMEOUT:
         error("Timeout!")
 
-    return downloaded_default_packages, downloaded_packages
+    return downloaded_installation_dependencies, downloaded_packages
 
 
 def add_repos(repos: str):
@@ -176,14 +176,14 @@ def add_repos(repos: str):
 
 def add_packages(arch: str, packages: str) -> Dict[str, str]:
 
-    downloaded_default_packages, downloaded_packages = get_packages(arch, packages)
+    downloaded_installation_dependencies, downloaded_packages = get_packages(arch, packages)
 
     if downloaded_packages == []:
         return {}
 
     return {
         "python": {
-            "PYTHON_DEF_PACKAGES": " ".join([f'/var/packages/{package}' for package in downloaded_default_packages]),
+            "PYTHON_INSTALL_DEPS": " ".join([f'/var/packages/{package}' for package in downloaded_installation_dependencies]),
             "PYTHON_PACKAGES": " ".join([f'/var/packages/{package}' for package in downloaded_packages]),
         }
     }

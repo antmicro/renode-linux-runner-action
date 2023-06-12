@@ -2,8 +2,8 @@
 # Linux in Renode has the static IP 172.16.0.2/16.
 
 name: host_network
+shell: host
 requires: [renode_network]
-refers: host
 echo: true
 timeout: 10
 fail-fast: true

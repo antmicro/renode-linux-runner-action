@@ -74,7 +74,7 @@ def test_task(test_task_str: str):
 
     additional_settings = {
         "name": "action_test",
-        "refers": "target",
+        "shell": "target",
         "requires": ["chroot", "python"],
         "echo": True,
     }

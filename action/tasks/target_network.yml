@@ -3,8 +3,8 @@
 # the tap0 interface created in the host
 
 name: target_network
+shell: target
 requires: [host_network, renode_network]
-refers: target
 echo: true
 timeout: 5
 fail-fast: true

@@ -1,6 +1,6 @@
 name: device-i2c
+shell: target
 required-by: [chroot]
-refers: target
 echo: true
 timeout: 10
 fail-fast: true

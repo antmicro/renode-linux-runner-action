@@ -1,6 +1,6 @@
 name: target
+shell: target
 requires: [renode_config]
-refers: target
 echo: true
 timeout: 5
 fail-fast: true

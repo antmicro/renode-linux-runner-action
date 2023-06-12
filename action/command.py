@@ -98,9 +98,9 @@ class Task:
     """
 
     name: str
+    shell: str
     requires: list[str] = field(default_factory=list)
     required_by: list[str] = field(default_factory=list)
-    refers: str = "virtual"
     echo: bool = False
     timeout: int | NoneType = None
     fail_fast: bool = True

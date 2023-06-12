@@ -115,7 +115,7 @@ available_devices = {
                 [(None, 0)],
             ),
     "gpio": Device(
-                ["ranges"],
+                ["RANGES"],
                 [(GPIO_SplitDevice, 2)],
             ),
     "i2c": Device(

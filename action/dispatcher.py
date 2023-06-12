@@ -129,7 +129,7 @@ class CommandDispatcher:
         init_sleep: how much time should pass between initializing the Shell and executing its commands
         """
         self.add_task(Task(
-            name=name, refers=name, sleep=init_sleep, commands=init_commands
+            name=name, shell=name, sleep=init_sleep, commands=init_commands
         ))
 
         return Shell(name, spawn_cmd=spawn_cmd, stdout=stdout, commands=[], default_expect=default_expect)
@@ -146,8 +146,8 @@ class CommandDispatcher:
         if not task:
             return
 
-        if task.refers != task.name:
-            task.requires.append(task.refers)
+        if task.shell != task.name:
+            task.requires.append(task.shell)
 
         self.tasks[task.name] = task
 
@@ -178,9 +178,9 @@ class CommandDispatcher:
                 continue
 
             exit_code = 0
-            self.shells[task.refers].add_task(task)
+            self.shells[task.shell].add_task(task)
 
-            for return_code in self.shells[task.refers].run_step():
+            for return_code in self.shells[task.shell].run_step():
                 if return_code != 0:
                     exit_code = return_code
                 if exit_code != 0 and task.fail_fast:
