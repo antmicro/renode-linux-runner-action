@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common import get_file, error
 from command import Task
+from common import get_file, error, archs
 from devices import add_devices
 from dependencies import add_repos, add_packages
 from images import prepare_shared_directories, prepare_kernel_and_initramfs, burn_rootfs_image
 from dispatcher import CommandDispatcher
 
 from datetime import datetime
-from typing import Dict
 
 import sys
 import json
@@ -29,11 +28,6 @@ import yaml
 
 DEFAULT_IMAGE_PATH = "https://github.com/{}/releases/download/{}/image-{}-default.tar.xz"
 DEFAULT_KERNEL_PATH = "https://github.com/{}/releases/download/{}/kernel-{}-{}.tar.xz"
-
-
-default_boards: Dict[str, str] = {
-    "riscv64": "hifive_unleashed"
-}
 
 
 def configure_board(arch: str, board: str, resc: str, repl: str):
@@ -52,11 +46,11 @@ def configure_board(arch: str, board: str, resc: str, repl: str):
         custom repl: URL or path
     """
 
-    if arch not in default_boards:
+    if arch not in archs:
         error("Architecture not supportted!")
 
     if board == "default":
-        board = default_boards[arch]
+        board = archs[arch].default_board
 
     if board == "custom" and (resc == "default" or repl == "default"):
         error("You have to provide resc and repl for custom board")
@@ -137,7 +131,7 @@ if __name__ == "__main__":
     for it, custom_task in enumerate(args.get("tasks", "").splitlines()):
         get_file(custom_task, f"action/user_tasks/task{it}.yml")
 
-    dispatcher = CommandDispatcher({
+    dispatcher = CommandDispatcher(board, {
         "NOW": str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
         "BOARD": board
     }, optional_tasks)
@@ -145,7 +139,7 @@ if __name__ == "__main__":
     for task in optional_tasks:
         dispatcher.enable_task(task, True)
 
-    if args.get("network", "true") != "true":
+    if args.get("network", "true") != "true" or not archs[arch].network_available:
         for i in ["host", "renode", "target"]:
             dispatcher.enable_task(f"{i}_network", False)
 

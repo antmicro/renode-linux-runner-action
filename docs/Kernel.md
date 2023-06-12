@@ -27,13 +27,13 @@ There is also a Busybox with essential commands.
 
 Your custom `kernel` package should include:
 
-* `fw_payload.elf`: the bootloader and firmware for the HiFive Unleashed platform
-* `rootfs.cpio`: a packed `initramfs` compiled for the selected architecture (`riscv64`)
+* The file `vmlinux` or `Image`: the compiled kernel for the selected architecture with the bootloader and firmware if vmlinux is provided
+* `fw_payload.elf`: (for `Image` kernel) the bootloader and firmware for the board
+* `rootfs.cpio`: a packed `initramfs` compiled for the selected architecture
+* `.dtb` file: the device tree binary file for the specified board with the `.dtb` file extension.
 
 `rootfs.cpio` should contain:
 
-* in the `/boot` directory, the file `Image` that should be the compiled kernel for the selected architecture.
-* in the `/boot` directory, the device tree binary file for the specified board with the `.dtb` file extension.
 * `/init`, an executable script that redirects output to `ttyS0` device and starts an interactive shell session.
 * basic programs like: `sh`, `mount`, `chroot`, `dmesg`, `date`.
 * If you want to use networking, you should provide the `ip` command and network stack.
@@ -63,7 +63,7 @@ make -j$(nproc)
 
 This will take some time.
 
-Eventually, you should have some files in the `buildroot/output/images` directory. Create the new `tar.xz` archive with the files: `rootfs.cpio` and `fw_payload.elf`. The resulting archive is ready to use with the action.
+Eventually, you should have some files in the `buildroot/output/images` directory. Create the new `tar.xz` archive with [required files](#required-image-components). The resulting archive is ready to use with the action.
 
 ### Use your kernel
 
