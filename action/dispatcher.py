@@ -51,11 +51,11 @@ class CommandDispatcher:
             "host": ["sh", self.default_stdout, [
                 Command(command=[], expect=["#"], timeout=5),
                 Command(command=["screen -d -m renode --disable-xwt"], expect=["#"], timeout=5),
-            ], 7, "#"],
+            ], 5, "#"],
             "renode": ["telnet 127.0.0.1 1234", self.default_stdout, [
                 Command(command=[], expect=["(monitor)"], timeout=5),
                 Command(command=["emulation CreateServerSocketTerminal 3456 \"term\""], expect=["(monitor)"], timeout=5),
-            ], 5, r"\([\-a-zA-Z\d\s]+\)"],
+            ], 3, r"\([\-a-zA-Z\d\s]+\)"],
             "target": ["telnet 127.0.0.1 3456", self.default_stdout, [], 0, "#"],
         }
 
@@ -103,10 +103,10 @@ class CommandDispatcher:
                 if dependency not in self.tasks.keys():
                     error(f"Dependency {dependency} for {name} not satisfied. No such task.")
                 task_graph.add_edge(dependency, name)
-            for dependency in task.required_by:
-                if dependency not in self.tasks.keys():
-                    error(f"Dependency {name} for {dependency} not satisfied. No such task.")
-                task_graph.add_edge(name, dependency)
+
+            for dependency in task.before:
+                if dependency in self.tasks.keys():
+                    task_graph.add_edge(name, dependency)
 
         try:
             results = task_graph.topological_sorting(mode='out')

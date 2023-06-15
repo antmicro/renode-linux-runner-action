@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
     prepare_kernel_and_initramfs(kernel)
 
-    prepare_shared_directories(args.get("shared-dir", "") + '\n' + args.get("shared-dirs", ""))
+    prepare_shared_directories(args.get("shared-dirs", ""))
 
     devices = add_devices(args.get("devices", ""))
     python_packages = add_packages(arch, args.get("python-packages", ""))

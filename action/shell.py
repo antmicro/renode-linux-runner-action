@@ -16,6 +16,7 @@ from common import error
 from command import Command, Task
 
 from typing import Iterator, TextIO
+from time import sleep
 
 import queue
 import pexpect as px
@@ -52,16 +53,26 @@ class Shell:
         """
         Start shell
         """
+        retries = 7
 
-        try:
-            self.child = px.spawn(
-                self.spawn_cmd,
-                encoding="utf-8",
-                timeout=None
-            )
+        while retries > 0:
+            try:
+                self.child = px.spawn(
+                    self.spawn_cmd,
+                    encoding="utf-8",
+                    timeout=None
+                )
 
-        except px.TIMEOUT:
-            error("Timeout!")
+            except px.EOF:
+                retries -= 1
+                sleep(1)
+                continue
+            except px.TIMEOUT:
+                error("Timeout!")
+            else:
+                return
+
+        error(f"Shell {self.name} not responds")
 
     def _expect(self, command: Command) -> None:
         self.last_option = self.child.expect(command.expect, timeout=command.timeout)
@@ -133,5 +144,7 @@ class Shell:
 
             except IndexError:
                 error("Not enough options for last expect!")
+            except px.EOF:
+                error(f"Shell {self.name} not responds")
             except px.TIMEOUT:
                 error("Timeout!")

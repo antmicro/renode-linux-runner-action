@@ -11,10 +11,6 @@ inputs:
     description: Paths to shared directories
     required: false
     default:
-  shared-dir:
-    description: Path to shared directory (deprecated)
-    required: false
-    default: ""
   devices:
     description: Devices to set up
     required: false

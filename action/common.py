@@ -144,8 +144,8 @@ def get_file(path_or_url: str, target_path: str):
         try:
             r = requests.get(path_or_url)
             r.raise_for_status()
-        except (requests.exceptions.MissingSchema, requests.RequestException) as error:
-            error(f"Error while downloading {path_or_url} {error.response}")
+        except (requests.exceptions.MissingSchema, requests.RequestException, requests.HTTPError) as err:
+            error(f"Error while downloading {path_or_url} {err.response}")
         finally:
             with open(target_path, "wb") as fd:
                 fd.write(r.content)
