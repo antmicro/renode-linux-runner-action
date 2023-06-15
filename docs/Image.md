@@ -36,6 +36,9 @@ Currently, the following `image` configurations are provided:
 * riscv64:
 
   * image-riscv64-default.tar.xz
+
+* arm32:
+
   * image-arm32-default.tar.xz
 
 This images contains the following software:
