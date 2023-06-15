@@ -6,7 +6,8 @@ timeout: 10
 fail-fast: true
 sleep: 2
 commands:
-  - "include @action/device/${{BOARD}}/init.resc"
+  - command: "include @action/device/${{BOARD}}/init.resc"
+    timeout: 100
   # This setting increases emulation speed, thus mitigates networks errors and speedup user scripts.
   - "machine SetAdvanceImmediately true"
   - "connector Connect sysbus.uart0 term"
