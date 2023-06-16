@@ -257,6 +257,12 @@ def add_devices(devices: str) -> Dict[str, Dict[str, str]]:
             params_list_len = len(params_hook[1])
             params = [device.args[arg] for arg in params_hook[1]]
 
+            if not all([arg in device.args.keys() for arg in params_hook[1]]):
+                print(f"WARNING: for device {device.name}, wrong number "
+                      "of parameters. Some parameters replaced with the default ones.")
+
+                continue
+
             if params_list_len > 0 and params_action:
 
                 params_action: Action = params_action()
