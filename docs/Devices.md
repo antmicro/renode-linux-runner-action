@@ -5,9 +5,9 @@ This action offers several additional devices in the default images, which are n
 > **Warnings**
 > Adding devices may not work properly with your own kernel. If you want to use your own kernel, check that you have added the correct drivers.
 
-## Yaml style passing devices
+## YAML style passing devices
 
-You can pass device configurations for inclusion with a simple Yaml file. If you don't want to pass any parameters to the device simply type its name on the next line.
+You can pass device configurations for inclusion with a simple YAML file. If you do not want to pass any parameters to the device, simply put its name on the next line.
 
 ### Available devices
 
@@ -31,9 +31,9 @@ You can pass device configurations for inclusion with a simple Yaml file. If you
       vivid
 ```
 
-## Old multilne string passing devices
+## Passing devices by multiline string
 
-Devices can also be written out simply as new lines in the multiline string. Then you have to write out all the parameters one by one (without their names).
+Devices can also be written out simply as individual lines in a multiline string. Then all the parameters have to be listed one by one (without their names).
 
 For example:
 

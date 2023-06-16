@@ -17,7 +17,6 @@ from common import error
 from typing import Protocol, Any, Dict, Tuple, Iterator
 from dataclasses import dataclass
 from string import hexdigits
-from enum import Enum
 
 import yaml
 
@@ -54,7 +53,7 @@ class GPIO_SplitDevice:
     def __call__(self, args: list[str]) -> list[str]:
 
         assert len(args) == 2, "not enough parameters passed"
-        assert (type(args[0]) is int and type(args[1]) is int) or (args[0].isdecimal() and args[1].isdecimal())
+        assert all(type(arg) is int for arg in args) or all(arg.isdecimal() for arg in args)
 
         l, r = int(args[0]), int(args[1])
         gpio_ranges_params = []
@@ -116,14 +115,6 @@ class I2C_SetDeviceAddress:
             return False
 
 
-class DeviceType(Enum):
-    """
-    Style of the selected device list
-    """
-    STRING = 1
-    YAML = 2
-
-
 @dataclass
 class DevicePrototype:
     """
@@ -131,12 +122,12 @@ class DevicePrototype:
     Fields:
     ----------
     params_list: list[str]
-    command_action: list[Tuple[Action, int, list[str]]]
+    command_action: list[Tuple[Action, list[str]]]
         defines number of parameters needed and the
         Action itself and their names (for yaml style list)
     """
     params_list: list[str]
-    command_action: list[Tuple[Action, int, list[str]]]
+    command_action: list[Tuple[Action, list[str]]]
 
 
 @dataclass
@@ -146,30 +137,28 @@ class Device:
 
     Fields:
     ----------
-    type: yaml or old multiline string parametes style
     name: name of the device
     prototype: DevicePrototype for this device
     args: dict with parameters (for yaml style)
           or list with paramaters (for old multiline string style)
     """
-    type: DeviceType
     name: str
     prototype: DevicePrototype
-    args: list[str] | Dict[str, str]
+    args: Dict[str, str]
 
 
 available_devices: Dict[str, DevicePrototype] = {
     "vivid": DevicePrototype(
                 [],
-                [(None, 0, [])],
+                [(None, [])],
             ),
     "gpio": DevicePrototype(
                 ["ranges"],
-                [(GPIO_SplitDevice, 2, ["left-bound", "right-bound"])],
+                [(GPIO_SplitDevice, ["left-bound", "right-bound"])],
             ),
     "i2c": DevicePrototype(
                 ["chip_addr"],
-                [(I2C_SetDeviceAddress, 1, ["chip-addr"])],
+                [(I2C_SetDeviceAddress, ["chip-addr"])],
     )
 }
 
@@ -184,56 +173,62 @@ def get_device(devices: str) -> Iterator[Device]:
     devices: raw string from github action, syntax defined in README.md
     """
 
+    def none_to_empty_dict(suspect: Dict[str, str] | None) -> Dict[str, str]:
+        return suspect if suspect is not None else {}
+
+    def add_colon_if_no_params(line: str) -> str:
+        return line if ":" in line or len(line.split()) > 1 else f"{line}:"
+
+    def device_available(device: str) -> bool:
+        if device not in available_devices:
+            print(f"WARNING: Device {device} not found")
+
+        return device in available_devices
+
+    devices_dict: Dict[str, Dict[str, str]] = {}
+
     try:
+        devices_dict = {
+            device: none_to_empty_dict(args) for device, args in yaml.load(
+                str.join('\n', [add_colon_if_no_params(line) for line in devices.splitlines()]),
+                Loader=yaml.FullLoader
+            ).items() if device_available(device)
+        }
 
-        devices_lines = []
-
-        for line in devices.splitlines():
-            if not line.startswith(" ") and ":" not in line and len(line.split()) == 1:
-                devices_lines.append(f"{line}:")
-            else:
-                devices_lines.append(line)
-
-        devices_dict: Dict[str, Dict[str, str] | None] = yaml.safe_load('\n'.join(devices_lines))
-
-        if type(devices_dict) is not dict:
+        if any(type(args) is not dict for args in devices_dict.values()):
             raise yaml.YAMLError
 
-        for device_name, device_args in devices_dict.items():
-            if device_args is None:
-                devices_dict[device_name] = {}
+    except (yaml.YAMLError, TypeError):
 
-        for device_args in devices_dict.values():
-            if type(device_args) is not dict:
-                raise yaml.YAMLError
-
-        device_type = DeviceType.YAML
-
-    except yaml.YAMLError:
-
-        devices_string = devices.splitlines()
-        devices_dict: Dict[str, list[str]] = {}
-
-        for device in devices_string:
-
+        for device in devices.splitlines():
             device = device.split()
             device_name = device[0]
             device_args = device[1:]
 
-            devices_dict[device_name] = device_args
+            if not device_available(device_name):
+                continue
 
-        device_type = DeviceType.STRING
+            device_prototype = available_devices[device_name]
+
+            if len(device_args) != sum([len(i[1]) for i in device_prototype.command_action]):
+                print(f"WARNING: for device {device_name}, wrong number "
+                      "of parameters, replaced with the default ones.")
+
+                devices_dict[device_name] = {}
+                continue
+
+            devices_dict[device_name] = {
+                param: value for param, value in zip(
+                    sum([args[1] for args in available_devices[device_name].command_action], start=[]),
+                    device_args
+                )
+            }
 
     finally:
 
         for device_name, device_args in devices_dict.items():
 
-            if device_name not in available_devices:
-                print(f"WARNING: Device {device_name} not found")
-                continue
-
             yield Device(
-                device_type,
                 device_name,
                 available_devices[device_name],
                 device_args,
@@ -254,33 +249,13 @@ def add_devices(devices: str) -> Dict[str, Dict[str, str]]:
     for device in get_device(devices):
 
         new_device = {}
-        args_pointer = 0
         vars_pointer = 0
-
-        if device.type == DeviceType.STRING and len(device.args) != sum([i[1] for i in device.prototype.command_action]):
-            print(f"WARNING: for device {device.name}, wrong number "
-                  "of parameters, replaced with the default ones.")
-
-            added_devices[f"device-{device.name}"] = new_device
-            continue
 
         for params_hook in device.prototype.command_action:
 
             params_action = params_hook[0]
-            params_list_len = params_hook[1]
-            params_yaml_args = params_hook[2]
-
-            if device.type == DeviceType.YAML and not all([arg in device.args.keys() for arg in params_yaml_args]):
-                print(f"WARNING: for device {device.name}, wrong number "
-                      "of parameters. Some parameters replaced with the default ones.")
-
-                continue
-
-            match device.type:
-                case DeviceType.YAML:
-                    params = [device.args[arg] for arg in params_yaml_args]
-                case DeviceType.STRING:
-                    params = device.args[args_pointer:args_pointer + params_list_len]
+            params_list_len = len(params_hook[1])
+            params = [device.args[arg] for arg in params_hook[1]]
 
             if params_list_len > 0 and params_action:
 
@@ -298,7 +273,6 @@ def add_devices(devices: str) -> Dict[str, Dict[str, str]]:
 
             new_device |= {device.prototype.params_list[i + vars_pointer].upper(): var for i, var in enumerate(variable_list)}
             vars_pointer += variable_list_len
-            args_pointer += params_list_len
 
         added_devices[f"device-{device.name}"] = new_device
 
