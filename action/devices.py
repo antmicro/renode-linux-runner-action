@@ -198,7 +198,7 @@ def get_device(devices: str) -> Iterator[Device]:
         if any(type(args) is not dict for args in devices_dict.values()):
             raise yaml.YAMLError
 
-    except (yaml.YAMLError, TypeError):
+    except Exception:
 
         for device in devices.splitlines():
             device = device.split()
