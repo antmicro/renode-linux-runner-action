@@ -226,3 +226,18 @@ jobs:
             should-fail: true
             commands:
               - "wget example.org"
+
+  custom-task-test:
+    runs-on: ubuntu-latest
+    needs: send-to-releases
+    if: ${{ !failure() && !github.event.act }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: test
+        uses: ./
+        with:
+          shared-dirs: tests
+          tasks: |
+            tests/python_exists_image.yml
+            tests/python_exists_initramfs.yml

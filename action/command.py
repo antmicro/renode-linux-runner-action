@@ -100,7 +100,7 @@ class Task:
     name: str
     shell: str
     requires: list[str] = field(default_factory=list)
-    required_by: list[str] = field(default_factory=list)
+    before: list[str] = field(default_factory=list)
     echo: bool = False
     timeout: int | NoneType = None
     fail_fast: bool = True
@@ -126,7 +126,6 @@ class Task:
     def load_from_dict(dict: Dict[str, Any]) -> 'Task':
 
         name_map = {name: name for name in dict.keys()} | {
-            "required-by": "required_by",
             "fail-fast": "fail_fast",
             "check-exit-code": "check_exit_code",
             "should-fail": "should_fail",
