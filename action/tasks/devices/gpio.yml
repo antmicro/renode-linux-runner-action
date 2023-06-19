@@ -6,6 +6,6 @@ timeout: 10
 fail-fast: true
 disabled: true
 commands:
-  - "modprobe gpio-mockup gpio_mockup_ranges=${{RANGES}}"
+  - modprobe gpio-mockup gpio_mockup_ranges=${{RANGES}}
 vars:
   RANGES: "0,32"

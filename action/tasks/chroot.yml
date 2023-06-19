@@ -5,14 +5,14 @@ echo: true
 timeout: 5
 fail-fast: true
 commands:
-  - "mount /dev/vda /mnt"
-  - "cd /mnt"
-  - "mount -t proc /proc proc/"
-  - "mount -t sysfs /sys sys/"
-  - "mount -o bind /dev dev/"
-  - "mount -o bind /run run/"
-  - "mount -o bind /tmp tmp/"
-  - "mkdir -p sys/kernel/debug"
-  - "mount -t debugfs nodev sys/kernel/debug"
-  - "chroot /mnt /bin/sh"
-  - "cd /home"
+  - mount /dev/vda /mnt
+  - cd /mnt
+  - mount -t proc /proc proc/
+  - mount -t sysfs /sys sys/
+  - mount -o bind /dev dev/
+  - mount -o bind /run run/
+  - mount -o bind /tmp tmp/
+  - mkdir -p sys/kernel/debug
+  - mount -t debugfs nodev sys/kernel/debug
+  - chroot /mnt /bin/sh
+  - cd /home

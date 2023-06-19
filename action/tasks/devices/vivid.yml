@@ -6,4 +6,4 @@ timeout: 10
 fail-fast: true
 disabled: true
 commands:
-  - "modprobe vivid"
+  - modprobe vivid

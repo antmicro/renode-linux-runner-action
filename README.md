@@ -91,7 +91,7 @@ You can also set additional test parameters with [Task files](#tasks). For examp
     renode-run: |
       - should-fail: true
       - commands:
-        - "wget example.org"
+        - wget example.org
 ```
 
 This test will complete successfully because the network will be disabled in the emulated system and `wget` will return a non-zero exit code.
@@ -284,10 +284,10 @@ commands:
   - expect: "buildroot login:"
     timeout: null
     check-exit-code: false
-  - "root"
-  - "dmesg -n 1"
-  - "date -s \"${{NOW}}\""
-  - "echo ${{VAR1}}"
+  - root
+  - dmesg -n 1
+  - date -s "${{NOW}}"
+  - echo ${{VAR1}}
 vars:
   VAR1: "hello, world!"
 ```

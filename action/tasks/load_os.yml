@@ -8,6 +8,6 @@ commands:
   - expect: "buildroot login:"
     timeout: 30
     check-exit-code: False
-  - "root"
-  - "dmesg -n 1"
-  - "date -s \"${{NOW}}\""
+  - root
+  - dmesg -n 1
+  - date -s "${{NOW}}"
