@@ -17,7 +17,7 @@ Network configuration:
 If you don't need the Internet or don't have the proper permissions, you can disable the entire configuration with the `network: false` flag. You can continue to use options such as installing external Python packages, sharing directories or sideloading Git repositories.
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     shared-dirs: shared-dir
     renode-run: python --version

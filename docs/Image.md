@@ -18,7 +18,7 @@ A native image is just an archive with a full Linux rootfs. You can add any file
 The `docker` image type is a standard Docker image. The action will repack the latest layer into the standard .tar.xz archive and everything will continue as in the native image. The Docker images are downloaded from DockerHub. This is an example of using the `docker` image type:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     arch: riscv64
     image-type: docker
@@ -91,7 +91,7 @@ Eventually, you should have a `rootfs.tar` in the `buildroot/output/images` dire
 ### Use your image
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     arch: your-arch (i.e. riscv64)
     image-type: native

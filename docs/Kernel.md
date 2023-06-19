@@ -72,7 +72,7 @@ Eventually, you should have some files in the `buildroot/output/images` director
 ### Use your kernel
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     arch: your-arch (i.e. riscv64)
     kernel: path/to/kernel or URL

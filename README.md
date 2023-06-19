@@ -39,7 +39,7 @@ Because each project has very different requirements, this action provides an en
 This is the simplest example of running your commands in the emulated Linux system. The default image will boot and log itself into a basic shell session.
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     renode-run: uname -a
 ```
@@ -55,7 +55,7 @@ Linux buildroot 5.10.178 #1 SMP Thu May 11 13:44:01 UTC 2023 riscv64 GNU/Linux
 If you want to run more than one command, you can use a multiline string. For example, for this configuration:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     renode-run: |
       ls /dev | grep tty | head -n 3
@@ -76,7 +76,7 @@ tty1
 You can also run shell scripts, but you have to load them into the emulated system first using the [shared directories feature](#shared-directories) or by [sideloading Git repositories](#git-repositories).
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     shared-dirs: scripts
     renode-run: sh my-script.sh
@@ -85,7 +85,7 @@ You can also run shell scripts, but you have to load them into the emulated syst
 You can also set additional test parameters with [Task files](#tasks). For example:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     network: false
     renode-run: |
@@ -117,7 +117,7 @@ The Linux emulation runs on the RISC-V/HiFive Unleashed single core platform in 
 You can specify the architecture with the `arch` parameter. The default architecture is `riscv64`.
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     arch: riscv64
     renode-run: ...
@@ -137,7 +137,7 @@ You can specify many directories that will be added to the rootfs. All files fro
 In the following example, files from the `project-files` directory will be extracted to the `/opt/project` directory. If no destination directory is specified, the files will be extracted to `/home`.
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     shared-dirs: |
       shared-dir1
@@ -151,7 +151,7 @@ In the following example, files from the `project-files` directory will be extra
 The action allows you to add additional devices that are available in a given kernel configuration. For example, if you want to add a stub Video4Linux device you can specify:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     shared-dirs: |
       scripts
@@ -169,7 +169,7 @@ This action offers sideloading Python packages that you want to use in the emula
 For example:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     renode-run: python --version
     python-packages: |
@@ -186,7 +186,7 @@ You can read about the details of how the action collects dependencies and insta
 If you want to clone other Git repositories to the emulated system, you can use the `repos` argument. You can also specify the path into which you want to clone the repository:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     shared-dir: ./shared-dir
     renode-run: python --version
@@ -198,7 +198,7 @@ If you want to clone other Git repositories to the emulated system, you can use 
 By default, execution of the script is aborted on the first failure, and an error code is returned. When this option is disabled, the last non-zero exit code is returned after all commands are executed.
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     fail-fast: false
     renode-run:
@@ -211,7 +211,7 @@ By default, execution of the script is aborted on the first failure, and an erro
 You can disable networking in the emulated Linux by passing the `network: false` argument to the action
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     shared-dir: ./shared-dir
     renode-run: python --version
@@ -231,7 +231,7 @@ If you need additional software, you can mount your own filesystem. More informa
 The size of the mounted rootfs can be specified with the `rootfs-size` parameter. The parameter accepts the sizes in bytes (i.e. `1000000000`), kilobytes (i.e. `50000K`), megabytes (i.e. `512M`) or gigabytes (i.e. `1G`). The default `rootfs-size` value is `auto`; with this setting the size is calculated automatically.
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     shared-dir: shared-dir
     renode-run: python --version
@@ -245,7 +245,7 @@ Sometimes, after replacing the initramfs or board configuration, you may need to
 For example:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     shared-dir: shared-dir
     renode-run: |
