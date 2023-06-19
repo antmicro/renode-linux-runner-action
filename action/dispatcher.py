@@ -49,12 +49,12 @@ class CommandDispatcher:
 
         init_shells = {
             "host": ["sh", self.default_stdout, [
-                Command(command=[], expect=["#"], timeout=5),
-                Command(command=["screen -d -m renode --disable-xwt"], expect=["#"], timeout=5),
+                Command(command="", expect="#", timeout=5),
+                Command(command="screen -d -m renode --disable-xwt", expect="#", timeout=5),
             ], 5, "#"],
             "renode": ["telnet 127.0.0.1 1234", self.default_stdout, [
-                Command(command=[], expect=["(monitor)"], timeout=5),
-                Command(command=["emulation CreateServerSocketTerminal 3456 \"term\""], expect=["(monitor)"], timeout=5),
+                Command(command="", expect="(monitor)", timeout=5),
+                Command(command="emulation CreateServerSocketTerminal 3456 \"term\"", expect="(monitor)", timeout=5),
             ], 3, r"\([\-a-zA-Z\d\s]+\)"],
             "target": ["telnet 127.0.0.1 3456", self.default_stdout, [], 0, "#"],
         }

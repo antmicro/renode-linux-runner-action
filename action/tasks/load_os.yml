@@ -5,8 +5,7 @@ echo: true
 timeout: 5
 fail-fast: true
 commands:
-  - expect:
-    - "buildroot login:"
+  - expect: "buildroot login:"
     timeout: 30
     check-exit-code: False
   - "root"

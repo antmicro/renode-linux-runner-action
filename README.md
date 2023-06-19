@@ -281,8 +281,7 @@ echo: true
 timeout: 5
 fail-fast: true
 commands:
-  - expect:
-    - "buildroot login:"
+  - expect: "buildroot login:"
     timeout: null
     check-exit-code: false
   - "root"
@@ -297,10 +296,10 @@ vars:
 
 For a list of commands you can just use a list of strings, but if you want more powerful customization, you can use a `Command` object with the following fields:
 
-- `command`: A list of different shell commands. The shell command will be selected based of the index of expected string that was matched in the previous command. This allows you to react in different ways to different command results.
-- `expect`: A list of strings. The action will wait for one of the strings and pass its index to the next command.
-- `timeout`: Timeout in seconds for the command. By default, the timeout is inherited from the Task.
-- `echo`: Boolean parameter. If true, the output from the shell is printed. By default this parameter is inherited from the Task.
+- `command`: The shell command to be run.
+- `expect`: A string the action will wait for from the command's output.
+- `timeout`: Timeout in seconds for the command. By default, the timeout is inherited from the task.
+- `echo`: Boolean parameter. If true, the output from the shell is printed. By default this parameter is inherited from the task.
 - `check-exit-code`: Boolean parameter. If true, the shell will check whether the command failed or not. Default: `true`
 
 ### Variables

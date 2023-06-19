@@ -43,7 +43,6 @@ class Shell:
         self.spawn_cmd: str = spawn_cmd
         self.child: px.spawn = None
         self.default_expect: str = default_expect
-        self.last_option = 0
         self.stdout = stdout
 
         for com in commands:
@@ -75,13 +74,13 @@ class Shell:
         error(f"Shell {self.name} is not responding")
 
     def _expect(self, command: Command) -> None:
-        self.last_option = self.child.expect(command.expect, timeout=command.timeout)
+        self.child.expect(command.expect, timeout=command.timeout)
 
     def _sendline(self, command: Command) -> None:
         if command.command == []:
             return
 
-        self.child.sendline(command.command[self.last_option])
+        self.child.sendline(command.command)
 
     def _add_command(self, command: Command) -> None:
         """
@@ -100,8 +99,8 @@ class Shell:
 
             command._apply_task_properties(
                 ["timeout", "expect", "echo", "check_exit_code", "should_fail"],
-                [-1, [], None, None, None],
-                [task.timeout, [self.default_expect], task.echo, task.check_exit_code, task.should_fail]
+                [-1, None, None, None, None],
+                [task.timeout, self.default_expect, task.echo, task.check_exit_code, task.should_fail]
             )
 
             self._add_command(command)

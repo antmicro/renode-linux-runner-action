@@ -29,8 +29,8 @@ class Command:
     Stores a Shell command with custom configuration options
     """
 
-    command: list[str] = field(default_factory=list)
-    expect: list[str] = field(default_factory=list)
+    command: str = field(default_factory=str)
+    expect: str | NoneType = None
     timeout: int | NoneType = -1
     echo: bool | NoneType = None
     check_exit_code: bool | NoneType = None
@@ -53,9 +53,9 @@ class Command:
     def load_from_dict(dict: Dict[str, Any] | str):
 
         if type(dict) == str:
-            dict = {"command": [dict]}
-        elif type(dict.get("command", None)) == str:
-            dict["command"] = [dict["command"]]
+            dict = {"command": dict}
+        elif not dict.get("command"):
+            dict["command"] = ""
 
         name_map = {name: name for name in dict.keys()} | {
             "check-exit-code": "check_exit_code",
@@ -75,15 +75,14 @@ class Command:
 
         variable_group = r"\$\{\{([\sa-zA-Z0-9_\-]*)\}\}"
 
-        for it, command in enumerate(self.command):
-            for match in re.finditer(variable_group, command):
-                pattern = match[0]
-                var_name = match[1]
+        for match in re.finditer(variable_group, self.command):
+            pattern = match[0]
+            var_name = match[1]
 
-                if var_name in vars:
-                    self.command[it] = self.command[it].replace(pattern, vars[var_name])
-                else:
-                    error(f"Variable {var_name} not found!")
+            if var_name in vars:
+                self.command = self.command.replace(pattern, vars[var_name])
+            else:
+                error(f"Variable {var_name} not found!")
 
 
 @dataclass
@@ -174,7 +173,7 @@ class Task:
 
         params["name"] = name
         params["commands"] = [
-            Command(command=[com]) for com in string.splitlines()
+            Command(command=com) for com in string.splitlines()
         ]
 
         return Task.load_from_dict(params)
