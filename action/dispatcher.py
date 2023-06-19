@@ -40,7 +40,7 @@ class CommandDispatcher:
         Parameters
         ----------
         global_vars: global variables
-        override_vars: dictionary that stores different dictionaries for each task to override existing variables there
+        override_vars: dictionary that stores a dictionary for each Task that overrides its existing variables
         """
 
         # FilteredStdout is used to remove \r characters from telnet output.
@@ -157,7 +157,7 @@ class CommandDispatcher:
 
     def delete_task(self, name: str) -> None:
         """
-        Deletes task
+        Deletes a Task
 
         Parameters
         ----------

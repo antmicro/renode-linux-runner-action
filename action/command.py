@@ -66,7 +66,7 @@ class Command:
 
     def apply_vars(self, vars: Dict[str, str]):
         """
-        Resolves variables that were provided with task or are global variables.
+        Resolves variables that were provided with Task or are global variables.
 
         Parameters
         ----------
@@ -89,12 +89,12 @@ class Command:
 @dataclass
 class Task:
     """
-    A task is a block of commands that are performed on one shell and have
+    A Task is a block of commands that are performed on one shell and have
     one basic goal, for example mount the filesystem or install a
     package. It also stores additional parameters like "echo" to print
     shell output on the screen, etc.
 
-    Tasks can depend on other tasks and together form a dependency graph.
+    Tasks can depend on other Tasks. Together, they form a dependency graph.
     """
 
     name: str
@@ -134,23 +134,24 @@ class Task:
         return dacite.from_dict(data_class=Task, data={name_map[name]: value for name, value in dict.items()})
 
     @staticmethod
-    def load_from_yaml(yaml_string: str, config: Dict[str, Any] = {}) -> 'Task':
+    def load_from_yaml(yaml_string: str, overrides: Dict[str, Any] = {}) -> 'Task':
         """
-        Construct the task from yaml.
+        Construct a Task from YAML.
 
         Parameters
         ----------
-        yaml_string : string with yaml
+        yaml_string : string with YAML
+        overrides: additional overrides for Task parameters
         """
 
         obj: Dict[str, Any] = yaml.safe_load(yaml_string)
         if type(obj) is not dict:
             raise yaml.YAMLError
 
-        obj.update(config)
+        obj.update(overrides)
 
         if "name" not in obj.keys():
-            error("task description file must have at least 'name' field")
+            error("Task description file must at least contain a 'name' field")
 
         obj["commands"] = [
             Command.load_from_dict(com)
@@ -160,23 +161,23 @@ class Task:
         return Task.load_from_dict(obj)
 
     @staticmethod
-    def form_multiline_string(name: str, string: str, config: Dict[str, Any]) -> 'Task':
+    def from_multiline_string(name: str, string: str, params: Dict[str, Any]) -> 'Task':
         """
-        Construct the task from multiline string of commands.
+        Construct a Task from a multiline string of commands.
 
         Parameters
         ----------
-        name: identifier of the task
+        name: identifier of the Task
         string: multiline string with commands
-        config: additional parameters to Task as dictionary
+        params: Task parameters other than name and commands
         """
 
-        config["name"] = name
-        config["commands"] = [
+        params["name"] = name
+        params["commands"] = [
             Command(command=[com]) for com in string.splitlines()
         ]
 
-        return Task.load_from_dict(config)
+        return Task.load_from_dict(params)
 
     def enable(self, value: bool) -> None:
         self.disabled = not value
