@@ -72,7 +72,7 @@ class Shell:
             else:
                 return
 
-        error(f"Shell {self.name} not responds")
+        error(f"Shell {self.name} is not responding")
 
     def _expect(self, command: Command) -> None:
         self.last_option = self.child.expect(command.expect, timeout=command.timeout)
@@ -145,6 +145,6 @@ class Shell:
             except IndexError:
                 error("Not enough options for last expect!")
             except px.EOF:
-                error(f"Shell {self.name} not responds")
+                error(f"Shell {self.name} is not responding")
             except px.TIMEOUT:
                 error("Timeout!")
