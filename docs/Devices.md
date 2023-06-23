@@ -21,7 +21,7 @@ You can pass device configurations for inclusion with a simple YAML file. If you
 ### Example
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     renode-run: ls /dev
     devices: |
@@ -38,7 +38,7 @@ Devices can also be written out simply as individual lines in a multiline string
 For example:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     renode-run: ls /dev
     devices: |
@@ -50,7 +50,7 @@ For example:
 ### Old devices syntax
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     devices: |
       device1 param1 param2 param3 ...

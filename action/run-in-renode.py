@@ -66,7 +66,7 @@ def configure_board(arch: str, board: str, resc: str, repl: str):
 
 def test_task(test_task_str: str):
 
-    additional_settings = {
+    params = {
         "name": "action_test",
         "shell": "target",
         "requires": ["chroot", "python"],
@@ -74,9 +74,9 @@ def test_task(test_task_str: str):
     }
 
     try:
-        return Task.load_from_yaml(test_task_str, config=additional_settings)
+        return Task.load_from_yaml(test_task_str, overrides=params)
     except yaml.YAMLError:
-        return Task.form_multiline_string("action_test", test_task_str, config=additional_settings)
+        return Task.from_multiline_string("action_test", test_task_str, params=params)
 
 
 if __name__ == "__main__":

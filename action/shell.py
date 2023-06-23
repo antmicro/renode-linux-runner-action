@@ -33,17 +33,16 @@ class Shell:
         """
         Parameters
         ----------
-        name: shell name
-        spawn_cmd: the starting command that initializes shell
+        name: arbitrary Shell name
+        spawn_cmd: the command that spawns the Shell process
         stdout: if the command is executed in echo mode, the output is redirected to this TextIO
-        commands: adds these initial commands to buffer
+        commands: adds these initial commands to queue
         """
         self.queue: queue.Queue[Command] = queue.Queue()
         self.name: str = name
         self.spawn_cmd: str = spawn_cmd
         self.child: px.spawn = None
         self.default_expect: str = default_expect
-        self.last_option = 0
         self.stdout = stdout
 
         for com in commands:
@@ -51,7 +50,7 @@ class Shell:
 
     def _spawn(self) -> None:
         """
-        Start shell
+        Start the Shell
         """
         retries = 7
 
@@ -75,17 +74,17 @@ class Shell:
         error(f"Shell {self.name} is not responding")
 
     def _expect(self, command: Command) -> None:
-        self.last_option = self.child.expect(command.expect, timeout=command.timeout)
+        self.child.expect(command.expect, timeout=command.timeout)
 
     def _sendline(self, command: Command) -> None:
         if command.command == []:
             return
 
-        self.child.sendline(command.command[self.last_option])
+        self.child.sendline(command.command)
 
     def _add_command(self, command: Command) -> None:
         """
-        Add command to buffer
+        Add command to queue
 
         Parameters
         ----------
@@ -100,15 +99,15 @@ class Shell:
 
             command._apply_task_properties(
                 ["timeout", "expect", "echo", "check_exit_code", "should_fail"],
-                [-1, [], None, None, None],
-                [task.timeout, [self.default_expect], task.echo, task.check_exit_code, task.should_fail]
+                [-1, None, None, None, None],
+                [task.timeout, self.default_expect, task.echo, task.check_exit_code, task.should_fail]
             )
 
             self._add_command(command)
 
     def run_step(self) -> Iterator[int]:
         """
-        Runs single command from buffer per iteration and optionally yields it's error code
+        Runs single command from queue per iteration and yields its error code
         """
 
         def return_code(command: Command):
@@ -120,7 +119,7 @@ class Shell:
             self.child.sendline("echo RESULT:${?}")
             self.child.expect(r"RESULT:(\d+)", timeout=10)
             ret = int(self.child.match.group(1))
-            self.child.expect_exact("#", timeout=10)
+            self.child.expect_exact(self.default_expect, timeout=10)
             self.child.logfile_read = self.stdout if command.echo else None
 
             if command.should_fail:
@@ -147,4 +146,4 @@ class Shell:
             except px.EOF:
                 error(f"Shell {self.name} is not responding")
             except px.TIMEOUT:
-                error("Timeout!")
+                error(f"Timeout! (shell={self.name}, cmd={''.join(command.command)})")

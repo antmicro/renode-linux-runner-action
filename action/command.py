@@ -29,8 +29,8 @@ class Command:
     Stores a Shell command with custom configuration options
     """
 
-    command: list[str] = field(default_factory=list)
-    expect: list[str] = field(default_factory=list)
+    command: str = field(default_factory=str)
+    expect: str | NoneType = None
     timeout: int | NoneType = -1
     echo: bool | NoneType = None
     check_exit_code: bool | NoneType = None
@@ -53,9 +53,9 @@ class Command:
     def load_from_dict(dict: Dict[str, Any] | str):
 
         if type(dict) == str:
-            dict = {"command": [dict]}
-        elif type(dict.get("command", None)) == str:
-            dict["command"] = [dict["command"]]
+            dict = {"command": dict}
+        elif not dict.get("command"):
+            dict["command"] = ""
 
         name_map = {name: name for name in dict.keys()} | {
             "check-exit-code": "check_exit_code",
@@ -66,7 +66,7 @@ class Command:
 
     def apply_vars(self, vars: Dict[str, str]):
         """
-        Resolves variables that were provided with task or are global variables.
+        Resolves variables that were provided with Task or are global variables.
 
         Parameters
         ----------
@@ -75,26 +75,25 @@ class Command:
 
         variable_group = r"\$\{\{([\sa-zA-Z0-9_\-]*)\}\}"
 
-        for it, command in enumerate(self.command):
-            for match in re.finditer(variable_group, command):
-                pattern = match[0]
-                var_name = match[1]
+        for match in re.finditer(variable_group, self.command):
+            pattern = match[0]
+            var_name = match[1]
 
-                if var_name in vars:
-                    self.command[it] = self.command[it].replace(pattern, vars[var_name])
-                else:
-                    error(f"Variable {var_name} not found!")
+            if var_name in vars:
+                self.command = self.command.replace(pattern, vars[var_name])
+            else:
+                error(f"Variable {var_name} not found!")
 
 
 @dataclass
 class Task:
     """
-    A task is a block of commands that are performed on one shell and have
+    A Task is a block of commands that are performed on one shell and have
     one basic goal, for example mount the filesystem or install a
     package. It also stores additional parameters like "echo" to print
     shell output on the screen, etc.
 
-    Tasks can depend on other tasks and together form a dependency graph.
+    Tasks can depend on other Tasks. Together, they form a dependency graph.
     """
 
     name: str
@@ -134,23 +133,24 @@ class Task:
         return dacite.from_dict(data_class=Task, data={name_map[name]: value for name, value in dict.items()})
 
     @staticmethod
-    def load_from_yaml(yaml_string: str, config: Dict[str, Any] = {}) -> 'Task':
+    def load_from_yaml(yaml_string: str, overrides: Dict[str, Any] = {}) -> 'Task':
         """
-        Construct the task from yaml.
+        Construct a Task from YAML.
 
         Parameters
         ----------
-        yaml_string : string with yaml
+        yaml_string : string with YAML
+        overrides: additional overrides for Task parameters
         """
 
         obj: Dict[str, Any] = yaml.safe_load(yaml_string)
         if type(obj) is not dict:
             raise yaml.YAMLError
 
-        obj.update(config)
+        obj.update(overrides)
 
         if "name" not in obj.keys():
-            error("task description file must have at least 'name' field")
+            error("Task description file must at least contain a 'name' field")
 
         obj["commands"] = [
             Command.load_from_dict(com)
@@ -160,23 +160,23 @@ class Task:
         return Task.load_from_dict(obj)
 
     @staticmethod
-    def form_multiline_string(name: str, string: str, config: Dict[str, Any]) -> 'Task':
+    def from_multiline_string(name: str, string: str, params: Dict[str, Any]) -> 'Task':
         """
-        Construct the task from multiline string of commands.
+        Construct a Task from a multiline string of commands.
 
         Parameters
         ----------
-        name: identifier of the task
+        name: identifier of the Task
         string: multiline string with commands
-        config: additional parameters to Task as dictionary
+        params: Task parameters other than name and commands
         """
 
-        config["name"] = name
-        config["commands"] = [
-            Command(command=[com]) for com in string.splitlines()
+        params["name"] = name
+        params["commands"] = [
+            Command(command=com) for com in string.splitlines()
         ]
 
-        return Task.load_from_dict(config)
+        return Task.load_from_dict(params)
 
     def enable(self, value: bool) -> None:
         self.disabled = not value

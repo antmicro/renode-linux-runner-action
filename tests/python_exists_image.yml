@@ -5,5 +5,4 @@ echo: true
 timeout: 5
 should-fail: false
 commands:
-  - command: 
-    - "sh -c \"if command -v python &> /dev/null; then echo Python available; exit 0; else echo Python not available; exit 1; fi;\""
+  - command: sh -c "if command -v python &> /dev/null; then echo Python available; exit 0; else echo Python not available; exit 1; fi;"

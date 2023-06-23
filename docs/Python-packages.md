@@ -11,7 +11,7 @@ There is no need to manually add dependencies. The action will resolve them and 
 Examples:
 
 ```yaml
-- uses: antmicro/renode-linux-runner-action@v0
+- uses: antmicro/renode-linux-runner-action@v1
   with:
     shared-dir: ./shared-dir
     renode-run: python --version

@@ -1,5 +1,5 @@
-name: Renode linux runner action
-description: Test your project inside emulated Linux
+name: Renode Linux Runner Action
+description: Test your project in an emulated Linux system using Renode
 author: Antmicro
 
 inputs:

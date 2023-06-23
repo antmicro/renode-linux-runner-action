@@ -40,7 +40,7 @@ class CommandDispatcher:
         Parameters
         ----------
         global_vars: global variables
-        override_vars: dictionary that stores different dictionaries for each task to override existing variables there
+        override_vars: dictionary that stores a dictionary for each Task that overrides its existing variables
         """
 
         # FilteredStdout is used to remove \r characters from telnet output.
@@ -49,12 +49,12 @@ class CommandDispatcher:
 
         init_shells = {
             "host": ["sh", self.default_stdout, [
-                Command(command=[], expect=["#"], timeout=5),
-                Command(command=["screen -d -m renode --disable-xwt"], expect=["#"], timeout=5),
+                Command(command="", expect="#", timeout=5),
+                Command(command="screen -d -m renode --disable-xwt", expect="#", timeout=5),
             ], 5, "#"],
             "renode": ["telnet 127.0.0.1 1234", self.default_stdout, [
-                Command(command=[], expect=["(monitor)"], timeout=5),
-                Command(command=["emulation CreateServerSocketTerminal 3456 \"term\""], expect=["(monitor)"], timeout=5),
+                Command(command="", expect="(monitor)", timeout=5),
+                Command(command="emulation CreateServerSocketTerminal 3456 \"term\"", expect="(monitor)", timeout=5),
             ], 3, r"\([\-a-zA-Z\d\s]+\)"],
             "target": ["telnet 127.0.0.1 3456", self.default_stdout, [], 0, "#"],
         }
@@ -157,7 +157,7 @@ class CommandDispatcher:
 
     def delete_task(self, name: str) -> None:
         """
-        Deletes task
+        Deletes a Task
 
         Parameters
         ----------

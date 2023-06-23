@@ -7,16 +7,14 @@ timeout: 5
 fail-fast: false
 check-exit-code: false
 commands:
-  - "mkdir -p $HOME/.config/pip"
-  - "echo [global] >> $HOME/.config/pip/pip.conf"
-  - "echo disable-pip-version-check = True >> $HOME/.config/pip/pip.conf"
-  - command: 
-    - "pip install ${{PYTHON_INSTALL_DEPS}} --no-index --no-deps --no-build-isolation --root-user-action=ignore"
+  - mkdir -p $HOME/.config/pip
+  - echo [global] >> $HOME/.config/pip/pip.conf
+  - echo disable-pip-version-check = True >> $HOME/.config/pip/pip.conf
+  - command: pip install ${{PYTHON_INSTALL_DEPS}} --no-index --no-deps --no-build-isolation --root-user-action=ignore
     timeout: 3600
-  - command:
-    - "pip install ${{PYTHON_PACKAGES}} --no-index --no-deps --no-build-isolation --root-user-action=ignore"
+  - command: pip install ${{PYTHON_PACKAGES}} --no-index --no-deps --no-build-isolation --root-user-action=ignore
     timeout: 3600
-  - "rm -r /var/packages"
+  - rm -r /var/packages
 vars:
   PYTHON_INSTALL_DEPS: ""
   PYTHON_PACKAGES: ""
