@@ -1,4 +1,4 @@
-From e444834cc5b6aa4d4e85fd7a5777b91a9a05022b Mon Sep 17 00:00:00 2001
+From f037f7f928d58033ff856888576f8dc1cf59268d Mon Sep 17 00:00:00 2001
 From: Wiktor Ogrodnik <wogrodnik@internships.antmicro.com>
 Date: Thu, 6 Apr 2023 14:30:25 +0200
 Subject: [PATCH 2/2] disable multicore emulation
@@ -103,5 +103,5 @@ index 64c06c9b41dc..58d9f0ec8f13 100644
  		prci: clock-controller@10000000 {
  			compatible = "sifive,fu540-c000-prci";
 -- 
-2.30.2
+2.39.2
 
