@@ -52,7 +52,7 @@ class Shell:
         """
         Start the Shell
         """
-        retries = 7
+        retries = 30
 
         while retries > 0:
             try:
