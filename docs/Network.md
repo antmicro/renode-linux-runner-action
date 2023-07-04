@@ -1,10 +1,10 @@
 # Network
 
-The emulated Linux system can access the Internet. This allows testing applications that require an Internet connection in addition to access to specific drivers. If an Internet connection is not needed it can also be disabled.
+The emulated Linux can access the Internet. This allows you to test applications that require an Internet connection in addition to access to specific drivers. If an Internet connection is not needed, it can be disabled.
 
 ## How it works
 
-The Renode emulator creates a [TAP](https://www.kernel.org/doc/html/latest/networking/tuntap.html) device on the host OS. Then, both the tap device and the emulated Ethernet module are connected to the virtual switch.
+The Renode emulator creates a [TAP](https://www.kernel.org/doc/html/latest/networking/tuntap.html) device on the host OS. Then both the tap device and the emulated Ethernet module are connected to a virtual switch.
 
 Network configuration:
 
@@ -14,7 +14,8 @@ Network configuration:
 
 ## Disable network
 
-If you don't need the Internet or don't have the proper permissions, you can disable the entire configuration with the `network: false` flag. You can continue to use options such as installing external Python packages, sharing directories or sideloading Git repositories.
+Should you not need an Internet connection or not have the proper permissions, you can disable the entire configuration with the `network: false` flag. 
+You can continue to use options such as installing external Python packages, sharing directories or sideloading Git repositories.
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v1
@@ -26,4 +27,4 @@ If you don't need the Internet or don't have the proper permissions, you can dis
 
 ## Known issues
 
-Sometimes when cloning Git repositories the emulated system using an HTTPS connection, the download fails due to certificate errors or buffer overflows. If you have an idea how we can solve this problem, feel free to suggest it to us.
+Cloning Git repositories for the emulated system using an HTTPS connection sometimes fails due to certificate errors or buffer overflows. We are open for suggestions on solving this problem.

@@ -2,41 +2,39 @@
 
 Copyright (c) 2022-2023 [Antmicro](https://www.antmicro.com)
 
-This action enables users to run workflows that require certain Linux [devices](#devices) not available in the default GitHub runners.
-It even provides the means to run entire custom kernels.
+This action enables users to run workflows that require certain Linux [devices](#devices) not available in default GitHub runners and provides the means to run entire custom kernels.
 This is achieved by running an emulated Linux system inside [Renode](https://renode.io/).
-Because each project has very different requirements, this action provides an environment that's as configurable as possible.
 
 ## Parameters
 
 ### Tests configuration
 
-- [`renode-run`](#running-your-commands-in-an-emulated-linux-system) - A command, list or [YAML Task](#tasks) with commands to run in Renode.
-- [`shared-dirs`](#shared-directories) - Shared directory paths. The contents of these directories will be mounted in Renode.
-- [`python-packages`](#python-packages) - Python packages from PyPI or a Git repository that will be sideloaded into the emulated Linux system.
-- [`repos`](#git-repositories) - Git repositories that will be sideloaded into the emulated system.
-- [`fail-fast`](#fail-fast) - Fail after first non-zero exit code instead of failing at the end. Default: `true`
+- [`renode-run`](#running-your-commands-in-an-emulated-linux-system) - A single command, list of commands or a [YAML Task](#tasks) containing commands to be run in Renode
+- [`shared-dirs`](#shared-directories) - Shared directory paths. Their contents will be mounted in Renode
+- [`python-packages`](#python-packages) - Python packages from PyPI or a Git repository that will be sideloaded into the emulated Linux system
+- [`repos`](#git-repositories) - Git repositories that will be sideloaded into the emulated system
+- [`fail-fast`](#fail-fast) - Fail after first non-zero exit code instead of failing at the end. Default: `true`.
 
 ### OS configuration
 
 - [`rootfs-size`](#rootfs-size) - Set the size of the rootfs image. Default: `auto`
 - [`image-type`](#image) - `native` or `docker`. Read about the differences in the [image section](#image)
-- [`image`](#image) - URL of the path to a `tar.xz` archive with a Linux rootfs for the specified architecture or a Docker image identifier. If not specified, the action will use the default one. See releases for examples.
+- [`image`](#image) - URL path to a Linux rootfs `tar.xz` archive for the specified architecture or a Docker image identifier. If not specified, the action will use the default one. See releases for examples
 - [`tasks`](#tasks) - Allows you to change the way the system is initialized. See [Tasks](#tasks) for more details.
 
 ### Board and devices configuration
 
-- [`network`](#network) - Enable access to the Internet in the emulated Linux system? Default: `true`
-- [`devices`](#devices) - List of devices to add to the emulated system. If not specified, the action will not add any devices.
-- [`kernel`](#kernel) - URL or path to the `tar.xz` archive containing the compiled embedded Linux kernel and initramfs. If not specified, the action will use the default kernel. See releases for examples.
+- [`network`](#network) - Enable Internet access in the emulated Linux system. Default: `true`
+- [`devices`](#devices) - List of devices to add to the emulated system. If not specified, the action will not add any devices
+- [`kernel`](#kernel) - URL or path to the `tar.xz` archive containing the compiled embedded Linux kernel and initramfs. If not specified, the action will use the default kernel. See releases for examples
 - [`arch`](#emulation) - Processor architecture
 - [`board`](#board) - A specific board name, or `default` for architecture default, or `custom` for a custom board
 - [`resc`](#board) - Custom Renode script
-- [`repl`](#board) - Custom Renode platform description
+- [`repl`](#board) - Custom Renode platform description.
 
 ## Running your commands in an emulated Linux system
 
-This is the simplest example of running your commands in the emulated Linux system. The default image will boot and log itself into a basic shell session.
+This is the simplest example of how you can run your commands in the emulated Linux system. The default image will boot and log itself into a basic shell session.
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v1
@@ -62,7 +60,7 @@ If you want to run more than one command, you can use a multiline string. For ex
       tty
 ```
 
-the result is:
+you get the following result:
 
 ```raw
 # ls /dev | grep tty | head -n 3
@@ -73,7 +71,7 @@ tty1
 /dev/ttySIF0
 ```
 
-You can also run shell scripts, but you have to load them into the emulated system first using the [shared directories feature](#shared-directories) or by [sideloading Git repositories](#git-repositories).
+You can also run shell scripts, but you need to load them into the emulated system first using the [shared directories feature](#shared-directories) or by [sideloading Git repositories](#git-repositories).
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v1
@@ -94,7 +92,7 @@ You can also set additional test parameters with [Task files](#tasks). For examp
         - wget example.org
 ```
 
-This test will complete successfully because the network will be disabled in the emulated system and `wget` will return a non-zero exit code.
+This test will complete successfully because the network is disabled in the emulated system and `wget` will return a non-zero exit code.
 
 ### Special cases
 
@@ -102,7 +100,7 @@ If the action detects that one of your commands has failed, it will also fail wi
 
 ### Limitations
 
-To keep the system image minimal, there is no standard `bash` shell, but a `busybox ash` shell instead. If you need `bash`, you can provide your own custom image. More on this in the [Image section](#image).
+To keep the system image minimal, there is no standard `bash` shell, but a `busybox ash` shell instead. If you need `bash`, you can provide your own custom image. More on this in the ['Image' section of the documentation](#image).
 
 ## Examples
 
@@ -110,7 +108,7 @@ The [release](.github/workflows/release.yml) workflow contains an example usage 
 
 ## Emulation
 
-The Linux emulation runs on the RISC-V/HiFive Unleashed single core platform in [Renode 1.13.3](https://github.com/renode/renode). This emulated system has some basics like 8GB of RAM and a network connection configured.
+The Linux emulation runs on the RISC-V HiFive Unleashed single core platform in [Renode 1.13.3](https://github.com/renode/renode). Basic specs like 8GB of RAM and a network connection are configured in the emulated system.
 
 ### Architecture
 
@@ -128,7 +126,7 @@ Available architectures:
 - riscv64
 - arm32 (armv7)
 
-We are working on `arm64` support.
+We are working on adding `arm64` support.
 
 ## Shared directories
 
@@ -148,7 +146,7 @@ In the following example, files from the `project-files` directory will be extra
 
 ## Devices
 
-The action allows you to add additional devices that are available in a given kernel configuration. For example, if you want to add a stub Video4Linux device you can specify:
+The action allows you to add additional devices available in a given kernel configuration. For example, if you want to add a stub Video4Linux device, you can specify:
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v1
@@ -164,7 +162,7 @@ More about available devices and syntax to customize them can be found [in the '
 
 ## Python packages
 
-This action offers sideloading Python packages that you want to use in the emulated system. You can select any package from PyPI or from a Git repository.
+This action lets you sideload Python packages that you want to use in the emulated system. You can select any package from PyPI or from a Git repository.
 
 For example:
 
@@ -228,7 +226,7 @@ If you need additional software, you can mount your own filesystem. More informa
 
 ## Rootfs size
 
-The size of the mounted rootfs can be specified with the `rootfs-size` parameter. The parameter accepts the sizes in bytes (i.e. `1000000000`), kilobytes (i.e. `50000K`), megabytes (i.e. `512M`) or gigabytes (i.e. `1G`). The default `rootfs-size` value is `auto`; with this setting the size is calculated automatically.
+The size of the mounted rootfs can be specified with the `rootfs-size` parameter. The parameter accepts sizes in bytes (e.g. `1000000000`), kilobytes (e.g. `50000K`), megabytes (e.g. `512M`) or gigabytes (e.g. `1G`). The default `rootfs-size` value is `auto`; with this setting the size is calculated automatically.
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v1
@@ -240,7 +238,7 @@ The size of the mounted rootfs can be specified with the `rootfs-size` parameter
 
 ## Tasks
 
-Sometimes, after replacing the initramfs or board configuration, you may need to change the default commands that the action executes on each run. You can use Tasks for that. All the commands that the action executes are stored in the Task files in `action/tasks/*.yml`. If you want to change any of these, you can pass your own Task through the `tasks` action argument. If your Task has the same name as one of the default ones, it will replace it.
+Sometimes, after replacing initramfs or changing the board configuration, you may need to change the default commands that the action executes on each run. You can use Tasks for that. All the commands that the action executes are stored in the Task files in `action/tasks/*.yml`. If you want to change any of these, you can pass your own Task through the `tasks` action argument. If your Task has the same name as one of the default ones, it will replace it.
 
 For example:
 
@@ -261,13 +259,13 @@ For example:
 A Task file is a YAML file with the following fields:
 
 - `name`: the only mandatory field; it is used to resolve dependencies between Tasks.
-- `shell`: the name of the shell on which the commands will be executed. The action has three available shells (`host`, `target`, `renode`).
-- `requires`: the array of tasks that must be executed before this task. This list is empty by default.
-- `before`: the array of tasks that must be executed after this task, but these tasks do not have to exist. This list is empty by default.
+- `shell`: the name of the shell in which the commands will be executed. The action has three available shells (`host`, `target`, `renode`).
+- `requires`: an array of tasks that must be executed before this task. This list is empty by default.
+- `before`: an array of tasks that will be executed after this task. This list is empty by default and the tasks included in the array do not need to exist.
 - `echo`: Boolean parameter. If true, the output from the shell will be printed. Default: `false`
 - `timeout`: Default timeout for each command. Commands can override this setting. Default: `null`, meaning no timeout for your commands.
 - `fail-fast`: Boolean parameter. If true, the action will return the error from the first failed command and stop. Otherwise, the action will fail at the end of the task. Default: `true`
-- `sleep`: The action will wait for the specified time in seconds before proceeding to the next task. Default: `0`
+- `sleep`: The action will wait for the specified time (in seconds) before proceeding to the next task. Default: `0`
 - `command`: List of commands or `Command` objects to execute. Default: empty
 - `vars`: Dictionary of variables. [Read more about it here](#variables). Default: empty
 
@@ -294,34 +292,34 @@ vars:
 
 ### Command syntax
 
-For a list of commands you can just use a list of strings, but if you want more powerful customization, you can use a `Command` object with the following fields:
+For a list of commands you can just use a list of strings, but if you want more customization, you can use a `Command` object containing the following fields:
 
-- `command`: The shell command to be run.
+- `command`: A shell command to be run.
 - `expect`: A string the action will wait for from the command's output.
-- `timeout`: Timeout in seconds for the command. By default, the timeout is inherited from the task.
+- `timeout`: Command timeout (in seconds). By default, the timeout is inherited from the task.
 - `echo`: Boolean parameter. If true, the output from the shell is printed. By default this parameter is inherited from the task.
 - `check-exit-code`: Boolean parameter. If true, the shell will check whether the command failed or not. Default: `true`
 
 ### Variables
 
-You can define a list of variables and use it later with `${{VAR_NAME}}`. In addition, some predefined global variables are available:
+You can define a list of variables and use it later with `${{VAR_NAME}}`. In addition, predefined global variables are available:
 
 - `${{BOARD}}`: name of the selected board
 - `${{NOW}}`: current date and time in the format `%Y-%m-%d %H:%M:%S`
 
 ### Shell initialization
 
-All Tasks that refer to a particular shell have an additional hidden dependency. They require the Task that has the same name as the shell (for example, `renode`). These Tasks are used to configure the shell. However, you can replace these Tasks by simply providing your own version with the same name.
+Any Task that refers to a particular shell will have an additional hidden, shell-specific dependency. They require the Task that has the same name as the shell (for example, `renode`). These Tasks are used to configure the shell. However, you can replace these Tasks by simply providing your own version with the same name.
 
 ## Kernel
 
-It is possible to replace the Linux image on which the tests are run and mount a custom [file system image](#image). More information on how to do it can be found [in the 'Kernel' section of the docs](docs/Kernel.md).
+It is possible to replace a Linux image on which the tests are run and mount a custom [file system image](#image). You can find further instructions on the topic [in the 'Kernel' section of the docs](docs/Kernel.md).
 
 ## Board
 
-The action allows you to select your own board and choose its configuration. You can select a board from the list (remember that you also need to select the matching processor architecture). Here are the available boards:
+The action allows you to select your own board and choose its configuration. You can select a board from a list (remember that you also need to select a matching processor architecture). Available boards are:
 
 - [riscv64 - hifive_unleashed](action/device/hifive_unleashed/init.resc)
 - [arm32 - zynq_7000](action/device/zynq_7000/init.resc)
 
-You can also choose the default board: `default` or your own board: `custom`. In the latter case, you have to provide your own resc and repl files, which will configure the emulation. Configuration files can be selected using [`resc`](https://renode.readthedocs.io/en/latest/introduction/using.html#resc-scripts) and [`repl`](https://renode.readthedocs.io/en/latest/advanced/platform_description_format.html) parameters. You can read more about these files in the [Renode documentation](https://renode.readthedocs.io/en/latest/index.html).
+You can also choose the default board: `default` or your own board: `custom`. In the latter case, you need to provide your own resc and repl files, which will configure the emulation. You can select the configuration files using [`resc`](https://renode.readthedocs.io/en/latest/introduction/using.html#resc-scripts) and [`repl`](https://renode.readthedocs.io/en/latest/advanced/platform_description_format.html) parameters. You can read more about these files in the [Renode documentation](https://renode.readthedocs.io/en/latest/index.html).
