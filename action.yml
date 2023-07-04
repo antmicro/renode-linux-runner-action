@@ -2,6 +2,10 @@ name: Renode Linux Runner Action
 description: Test your project in an emulated Linux system using Renode
 author: Antmicro
 
+branding:
+  color: blue
+  icon: cpu
+
 inputs:
   renode-run:
     description: Command or a list of commands to run in Renode
