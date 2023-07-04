@@ -1,6 +1,6 @@
 # Devices
 
-This action adds several devices not available in GitHub runners to the default images. These devices are not enabled by default. To enable a device simply add its name to the `devices` parameter along with optional parameters.
+The action's default images contain several devices not available in GitHub runners. These devices are not enabled by default. To enable a device simply add its name to the `devices` parameter along with optional parameters.
 
 > **Warnings**
 > Adding devices may not work properly with your own kernel. If you want to use your own kernel, make sure you have added the correct drivers.
