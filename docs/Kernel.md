@@ -5,9 +5,9 @@
 
 This section describes in detail how to build `kernel` packages that will be compatible with this action.
 
-First, it is worth mentioning that what we call the `kernel` package is actually a `tar.xz` archive containing `initramfs` and firmware for the emulated system.
+Firstly, it is worth mentioning that what we call the `kernel` package is actually a `tar.xz` archive containing `initramfs` and firmware for the emulated system.
 
-## Default images available
+## Available default images
 
 We currently provide the following `kernel` configurations:
 
@@ -19,37 +19,35 @@ We currently provide the following `kernel` configurations:
 
   * kernel-arm32-zynq_7000.tar.xz
 
-This packages contains drivers essential for selected boards, but we have also added some other drivers:
+The packages contain a Busybox with essential commands, drivers essential for these boards, and other drivers:
 
 * `vivid` for Video4Linux
 * `i2c-stub`
 * `gpio-mockup`
 
-There is also a Busybox with essential commands.
-
 ## Required image components
 
 Your custom `kernel` package should include:
 
-* The file `vmlinux` or `Image`: the compiled kernel for the selected architecture with the bootloader and firmware if vmlinux is provided
-* `fw_payload.elf`: (for `Image` kernel) the bootloader and firmware for the board
-* `rootfs.cpio`: a packed `initramfs` compiled for the selected architecture
-* `.dtb` file: the device tree binary file for the specified board with the `.dtb` file extension.
+* A `vmlinux` or `Image` file - a compiled kernel for the selected architecture, and a bootloader and firmware for `vmlinux` kernels
+* `fw_payload.elf` - a bootloader and firmware for `Image` kernels
+* `rootfs.cpio` - a packaged `initramfs` compiled for the selected architecture
+* `.dtb` file - a device tree binary file for the specified board.
 
 `rootfs.cpio` should contain:
 
-* `/init`, an executable script that redirects output to `ttyS0` device and starts an interactive shell session.
+* `/init`, an executable script that redirects output to the `ttyS0` device and starts an interactive shell session.
 * basic programs like: `sh`, `mount`, `chroot`, `dmesg`, `date`.
-* If you want to use networking, you should provide the `ip` command and network stack.
+* the `ip` command and a network stack, should you want to use networking.
 
 ## Create your own custom kernel package
 
-You can build the `kernel` package using any method you like, but we recommend using `buildroot`. It provides a lot of configuration options and will produce the file structure that this action requires.
-First, you may want to download the default `kernel` package configuration and modify it. The configuration is stored in the `kernel/<arch-board>` directory.
+You can build the `kernel` package using any method you like, but we recommend using `buildroot`. It provides many configuration options and will produce the file structure that this action requires.
+To start, you can download the default `kernel` package configuration and modify it. The configuration is stored in the `kernel/<arch-board>` directory.
 
 ### Adding Devices and Modifying Other Components
 
-If you want to add devices that we currently do not offer in our build, take a look at the `configs/linux.config.fragment` file. You can add the additional drivers there. You may also want to change the kernel version in `configs/board_defconfig` or add/delete some kernel patches in `patches/linux`.
+If you want to add devices that we currently do not offer in our build, take a look at the `configs/linux.config.fragment` file. You can add the necessary drivers there. You may also want to change the kernel version in `configs/board_defconfig` or add/delete kernel patches in `patches/linux`.
 
 ### Preparing the archive
 
@@ -59,7 +57,7 @@ Download the latest `buildroot` from [GitHub](https://github.com/buildroot/build
 make BR2_EXTERNAL=path/to/configuration board_name_defconfig
 ```
 
-and start compiling:
+Start compiling:
 
 ```sh
 make -j$(nproc)
@@ -67,7 +65,7 @@ make -j$(nproc)
 
 This will take some time.
 
-Eventually, you should have some files in the `buildroot/output/images` directory. Create the new `tar.xz` archive with [required files](#required-image-components). The resulting archive is ready to use with the action.
+You should end up with files in the `buildroot/output/images` directory. Create a new `tar.xz` archive with the [required files](#required-image-components). The resulting archive is ready for use with the action.
 
 ### Use your kernel
 
