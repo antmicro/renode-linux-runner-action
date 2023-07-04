@@ -1,5 +1,5 @@
 name: Renode Linux Runner Action
-description: Test your project in an emulated Linux system using Renode
+description: Run your tests in a configurable, emulated Linux environment with a custom kernel and access to virtual peripherals
 author: Antmicro
 
 inputs:
