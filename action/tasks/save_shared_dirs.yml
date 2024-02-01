@@ -1,0 +1,8 @@
+name: save_shared_dirs
+shell: target
+requires: [action_test]
+echo: true
+timeout: 5
+fail-fast: false
+commands:
+  - sync

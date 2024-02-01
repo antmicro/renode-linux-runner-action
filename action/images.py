@@ -105,6 +105,36 @@ def prepare_kernel_and_initramfs(kernel: str):
         error("Kernel not found! Action expects Image or vmlinux file.")
 
 
+def rootfs_size(size_str: str) -> int:
+    """
+    Returns rootfs size
+
+    Parameters
+    ----------
+    size_str: str
+        rootfs-size action parameter value
+    """
+
+    units = {
+        "B": 1,
+        "K": 1024,
+        "M": 1024**2,
+        "G": 1024**3
+    }
+
+    if size_str == "auto" or size_str.startswith("+"):
+        size = 0
+        for path, _, files in os.walk("images/rootfs"):
+            for f in files:
+                fp = os.path.join(path, f)
+                if not os.path.islink(fp):
+                    size += os.path.getsize(fp)
+
+        additional_size = int(size_str[:-1]) * units[size_str[-1]] if size_str.startswith("+") and size_str[-1] in units else 0
+        return max(size * 2, 5 * 10**7) + additional_size
+    return int(size_str)
+
+
 def burn_rootfs_image(
         user_directory: str,
         image: str,
@@ -185,18 +215,8 @@ def burn_rootfs_image(
             dirs_exist_ok=True
         )
 
-    if image_size == "auto":
-        size = 0
-        for path, _, files in os.walk("images/rootfs"):
-            for f in files:
-                fp = os.path.join(path, f)
-                if not os.path.islink(fp):
-                    size += os.path.getsize(fp)
-
-        image_size = f'{max(size * 2, 5 * 10**7)}'
     try:
-
-        run(["truncate", "images/rootfs.img", "-s", image_size], check=True)
+        run(["truncate", "images/rootfs.img", "-s", f"{rootfs_size(image_size)}"], check=True)
         run(["mkfs.ext4", "-d", "images/rootfs", "images/rootfs.img"],
             check=True,
             stdout=DEVNULL)
