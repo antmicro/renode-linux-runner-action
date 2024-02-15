@@ -16,14 +16,17 @@ from command import Task
 from common import get_file, error, archs
 from devices import add_devices
 from dependencies import add_repos, add_packages
-from images import prepare_shared_directories, prepare_kernel_and_initramfs, burn_rootfs_image
+from images import prepare_shared_directories, prepare_kernel_and_initramfs, burn_rootfs_image, shared_directories_actions
 from dispatcher import CommandDispatcher
+from subprocess import run
 
 from datetime import datetime
 
 import sys
 import json
 import yaml
+import shutil
+import os
 
 
 DEFAULT_IMAGE_PATH = "https://github.com/{}/releases/download/{}/image-{}-default.tar.xz"
@@ -146,3 +149,12 @@ if __name__ == "__main__":
     dispatcher.add_task(test_task(args.get("renode-run", "")))
 
     dispatcher.evaluate()
+
+    run(["mkdir", "rootfs"], check=True)
+    run(["sudo", "mount", "images/rootfs.img", "rootfs"], check=True)
+
+    for dir in shared_directories_actions:
+        src = f"rootfs/{dir.target}"
+        dst = f"{user_directory}/{dir.host}" if not dir.host.startswith('/') else dir.host
+        if os.path.exists(src):
+            shutil.copytree(src, dst, dirs_exist_ok=True)

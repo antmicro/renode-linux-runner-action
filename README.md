@@ -17,7 +17,7 @@ This is achieved by running an emulated Linux system inside [Renode](https://ren
 
 ### OS configuration
 
-- [`rootfs-size`](#rootfs-size) - Set the size of the rootfs image. Default: `auto`
+- [`rootfs-size`](#rootfs-size) - Set the size of the rootfs image. Default: `auto`.
 - [`image-type`](#image) - `native` or `docker`. Read about the differences in the [image section](#image)
 - [`image`](#image) - URL path to a Linux rootfs `tar.xz` archive for the specified architecture or a Docker image identifier. If not specified, the action will use the default one. See releases for examples
 - [`tasks`](#tasks) - Allows you to change the way the system is initialized. See [Tasks](#tasks) for more details.
@@ -132,7 +132,9 @@ We are working on adding `arm64` support.
 
 You can specify many directories that will be added to the rootfs. All files from these directories will be available in the specified target directories.
 
-In the following example, files from the `project-files` directory will be extracted to the `/opt/project` directory. If no destination directory is specified, the files will be extracted to `/home`.
+In the following example, files from the `project-files` directory will be extracted to the `/opt/project` directory. If no destination directory is specified, the files will be extracted to `/home`.  
+
+At the end of the action contents of the shared directories will be copied back from the mounted filesystem.
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v1
@@ -226,7 +228,7 @@ If you need additional software, you can mount your own filesystem. More informa
 
 ## Rootfs size
 
-The size of the mounted rootfs can be specified with the `rootfs-size` parameter. The parameter accepts sizes in bytes (e.g. `1000000000`), kilobytes (e.g. `50000K`), megabytes (e.g. `512M`) or gigabytes (e.g. `1G`). The default `rootfs-size` value is `auto`; with this setting the size is calculated automatically.
+The size of the mounted rootfs can be specified with the `rootfs-size` parameter. The parameter accepts sizes in bytes (e.g. `1000000000`), kilobytes (e.g. `50000K`), megabytes (e.g. `512M`) or gigabytes (e.g. `1G`). The default `rootfs-size` value is `auto`; with this setting the size is calculated automatically. Preceding the value with `+` sign (e.g. `+value`) sets the size to `auto` + `value`.
 
 ```yaml
 - uses: antmicro/renode-linux-runner-action@v1

@@ -19,7 +19,7 @@ ttc1 Frequency 33333333
 
 # rootfs
 machine LoadPlatformDescriptionFromString 'virtio: Storage.VirtIOBlockDevice @ sysbus 0xe0104000 { IRQ -> gic@63 }'
-virtio LoadImage @images/rootfs.img
+virtio LoadImage @images/rootfs.img true
 
 # This setting increases emulation speed, thus mitigates networks errors and speedup user scripts.
 machine SetAdvanceImmediately true
