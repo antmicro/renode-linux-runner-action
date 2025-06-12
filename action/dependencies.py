@@ -75,7 +75,7 @@ def get_packages(arch: str, packages: str) -> tuple[list[str], list[str]]:
     # python packages files ready to sideload
     downloaded_packages = []
 
-    child = px.spawn(f'sh -c "cd {os.getcwd()};exec /bin/sh"', encoding="utf-8", timeout=60)
+    child = px.spawn(f'sh -c "cd {os.getcwd()}; exec /bin/sh"', encoding="utf-8", timeout=60)  # noqa: E702
 
     try:
         child.expect_exact('#')
@@ -154,7 +154,7 @@ def add_repos(repos: str):
 
         print(f'Cloning {repo}' + f' to {folder}' if folder != '' else '')
 
-        child = px.spawn(f'sh -c "cd {os.getcwd()};exec /bin/sh"', encoding="utf-8", timeout=10)
+        child = px.spawn(f'sh -c "cd {os.getcwd()}; exec /bin/sh"', encoding="utf-8", timeout=10)  # noqa: E702
 
         try:
             child.expect_exact('#')

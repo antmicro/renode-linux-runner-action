@@ -177,7 +177,7 @@ def get_device(devices: str) -> Iterator[Device]:
         return suspect if suspect is not None else {}
 
     def add_colon_if_no_params(line: str) -> str:
-        return line if ":" in line or len(line.split()) > 1 else f"{line}:"
+        return line if ":" in line or len(line.split()) > 1 else f"{line}:"  # noqa: E231
 
     def device_available(device: str) -> bool:
         if device not in available_devices:
