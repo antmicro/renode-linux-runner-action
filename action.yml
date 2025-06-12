@@ -95,10 +95,12 @@ runs:
 
     - id: install-packages
       run: |
-        cd ${GITHUB_ACTION_PATH} &&                                                                                                      \
-        wget -q --no-verbose https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb && \
-        sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends                                                   \
-        ./renode_${RENODE_VERSION}_amd64.deb python3-venv &&                                                                             \
+        cd ${GITHUB_ACTION_PATH} &&                                                                                                                         \
+        wget -q --no-verbose https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode-${RENODE_VERSION}.linux-portable-dotnet.tar.gz && \
+        mkdir /opt/renode && tar xzf renode-${RENODE_VERSION}.linux-portable-dotnet.tar.gz --strip-components=1 -C /opt/renode &&                           \
+        rm renode-${RENODE_VERSION}.linux-portable-dotnet.tar.gz &&                                                                                         \
+        echo "PATH=$PATH:/opt/renode" >> "$GITHUB_ENV" &&                                                                                                   \
+        sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends python3-venv &&                                                      \
         sudo pip3 install -r requirements.txt
       shell: bash
       env:
@@ -110,7 +112,7 @@ runs:
 
     - id: test
       run: |
-        cd ${GITHUB_ACTION_PATH} && sudo python3 action/run-in-renode.py \
+        cd ${GITHUB_ACTION_PATH} && sudo --preserve-env=PATH python3 action/run-in-renode.py \
         '${{ toJSON(inputs) }}' "${GITHUB_WORKSPACE}" "$ACTION_REPO" "$ACTION_REF"
       shell: bash
       env:
