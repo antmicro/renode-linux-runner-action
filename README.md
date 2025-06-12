@@ -108,7 +108,7 @@ The [release](.github/workflows/release.yml) workflow contains an example usage 
 
 ## Emulation
 
-The Linux emulation runs on the RISC-V HiFive Unleashed single core platform in [Renode 1.13.3](https://github.com/renode/renode). Basic specs like 8GB of RAM and a network connection are configured in the emulated system.
+The Linux emulation runs on the RISC-V HiFive Unleashed single core platform in [Renode 1.15.3](https://github.com/renode/renode). Basic specs like 8GB of RAM and a network connection are configured in the emulated system.
 
 ### Architecture
 
