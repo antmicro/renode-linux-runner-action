@@ -65,8 +65,9 @@ jobs:
 
       - name: upload artifacts
         if: success()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
+          name: artifact-kernel-${{ matrix.arch }}-${{ matrix.board }}
           path: images/
 
   build-image:
@@ -91,8 +92,9 @@ jobs:
 
       - name: upload artifacts
         if: success()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
+          name: artifact-image-${{ matrix.arch }}-${{ matrix.name }}
           path: images/
 
   send-to-releases:
@@ -102,9 +104,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          path: ./
+          path: artifact/
+          pattern: artifact-*
+          merge-multiple: true
 
       - name: send to releases
         uses: svenstaro/upload-release-action@v2

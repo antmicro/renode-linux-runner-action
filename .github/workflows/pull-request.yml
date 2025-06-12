@@ -28,8 +28,9 @@ jobs:
 
       - name: upload artifacts
         if: success()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
+          name: artifact-kernel-${{ matrix.arch }}-${{ matrix.board }}
           path: images/
 
   pr-build-image:
@@ -52,8 +53,9 @@ jobs:
 
       - name: upload artifacts
         if: success()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
+          name: artifact-image-${{ matrix.arch }}-${{ matrix.name }}
           path: images/
 
   pr-riscv64-test:
@@ -63,9 +65,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          path: ./
+          path: artifact/
+          pattern: artifact-*
+          merge-multiple: true
 
       - name: test
         uses: ./
@@ -96,7 +100,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           path: ./
 
