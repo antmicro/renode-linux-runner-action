@@ -91,10 +91,6 @@ def get_packages(arch: str, packages: str) -> tuple[list[str], list[str]]:
 
         run_cmd(child, "#", ". ./venv-dir/bin/activate")
 
-        # Since the pip version in Ubuntu 22.04 is 22.0.2 and the first stable pip that supporting the --report flag is 23.0,
-        # pip needs to be updated in venv. This workaround may be removed later.
-        run_cmd(child, "(venv-dir) #", "pip -q install pip==23.0.1 --progress-bar off --disable-pip-version-check")
-
         for it, package in enumerate(installation_dependencies + packages.splitlines()):
 
             print(f"processing: {package}")
