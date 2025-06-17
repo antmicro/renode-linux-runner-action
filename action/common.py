@@ -41,7 +41,7 @@ archs: Dict[str, Architecture] = {
     ),
     "arm32": Architecture(
         python_name="armv7l",
-        docker_name="arm32v7",
+        docker_name="arm",
         default_board="zynq_7000",
         network_available=True,
     ),
