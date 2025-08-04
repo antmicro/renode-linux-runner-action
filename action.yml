@@ -104,7 +104,7 @@ runs:
         sudo pip3 install -r requirements.txt
       shell: bash
       env:
-        RENODE_VERSION: "1.15.3"
+        RENODE_VERSION: "1.16.0"
 
     - id: create-pip-virtual-environment
       run: cd ${GITHUB_ACTION_PATH} && mkdir -p venv-dir && python3 -m venv venv-dir
