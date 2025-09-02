@@ -89,7 +89,7 @@ You can also set additional test parameters with [Task files](#tasks). For examp
     renode-run: |
       - should-fail: true
       - commands:
-        - wget --spider github.com
+        - wget --spider -S github.com 2>&1 | grep "301 Moved Permanently"
 ```
 
 This test will complete successfully because the network is disabled in the emulated system and `wget` will return a non-zero exit code.
