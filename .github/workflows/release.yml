@@ -131,7 +131,7 @@ jobs:
         with:
           shared-dirs: tests
           renode-run: |
-            wget example.org
+            wget --spider github.com
             sh gpio.sh
             sh i2c.sh
             python pyrav4l2/.github/save_examples.py pyrav4l2/README.md
@@ -214,7 +214,7 @@ jobs:
           arch: arm32
           shared-dirs: tests
           renode-run: |
-            wget example.org
+            wget --spider github.com
             sh gpio.sh
             sh i2c.sh
             python pyrav4l2/.github/save_examples.py pyrav4l2/README.md
@@ -282,7 +282,7 @@ jobs:
           renode-run: |
             should-fail: true
             commands:
-              - "wget example.org"
+              - "wget --spider github.com"
 
   custom-task-test:
     runs-on: ubuntu-latest

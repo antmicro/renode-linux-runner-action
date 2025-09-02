@@ -89,7 +89,7 @@ You can also set additional test parameters with [Task files](#tasks). For examp
     renode-run: |
       - should-fail: true
       - commands:
-        - wget example.org
+        - wget --spider github.com
 ```
 
 This test will complete successfully because the network is disabled in the emulated system and `wget` will return a non-zero exit code.

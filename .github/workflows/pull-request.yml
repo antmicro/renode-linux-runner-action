@@ -79,7 +79,7 @@ jobs:
           kernel: artifact/kernel-riscv64-hifive_unleashed.tar.xz
           image: artifact/image-riscv64-default.tar.xz
           renode-run: |
-            wget example.org
+            wget --spider github.com
             sh gpio.sh
             sh i2c.sh
             python pyrav4l2/.github/save_examples.py pyrav4l2/README.md
@@ -112,7 +112,7 @@ jobs:
           kernel: artifact/kernel-arm32-zynq_7000.tar.xz
           image: artifact/image-arm32-default.tar.xz
           renode-run: |
-            wget example.org
+            wget --spider github.com
             sh gpio.sh
             sh i2c.sh
             python pyrav4l2/.github/save_examples.py pyrav4l2/README.md
